@@ -1,0 +1,13 @@
+{
+  "name": "oko-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:landing": "npm run dev -w packages/landing",
+    "dev:app": "npm run dev -w packages/app",
+    "build:landing": "npm run build -w packages/landing",
+    "build:app": "npm run build -w packages/app"
+  }
+}

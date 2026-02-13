@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light mode colors */
+    --background: 0 0% 100%;
+    --background-secondary: 249 250 251; /* #f9fafb */
+    --foreground: 240 10% 3.9%;
+    --foreground-secondary: 156 163 175; /* #9ca3af */
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214.3 31.8% 91.4%; /* Стандартный shadcn border для светлой темы */
+    --input: 214.3 31.8% 91.4%;
+    --ring: 240 10% 3.9%;
+    --radius: 0.5rem;
+
+    /* Accent colors - #BFFF00 (lime-green) */
+    --accent-lime: 75 100% 50%; /* #BFFF00 - основной цвет */
+    --accent-lime-dark: 75 100% 25%; /* Еще темнее для in_progress */
+    --accent-lime-dim: 75 100% 25%; /* #7FBF00 */
+    --accent-lime-foreground: 0 0% 10%; /* #1a1a1a */
+    
+    /* Today marker color */
+    --today-marker: 320 100% 50%; /* #FF00BF - розовый/маджента */
+
+    /* Status colors */
+    --success: 142 76% 36%; /* #22c55e */
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%; /* #f59e0b */
+    --warning-foreground: 0 0% 98%;
+    --error: 0 84% 60%; /* #ef4444 */
+    --error-foreground: 0 0% 98%;
+    --info: 217 91% 60%; /* #3b82f6 */
+    --info-foreground: 0 0% 98%;
+    --milestone: 271 81% 56%; /* #a855f7 */
+    --milestone-foreground: 0 0% 98%;
+  }
+
+  .dark {
+    /* Dark mode colors - черный фон как на скриншоте */
+    --background: 0 0% 0%; /* #000000 - черный фон */
+    --background-secondary: 0 0% 3.9%; /* #0a0a0a - почти черный для вторичных элементов */
+    --foreground: 0 0% 100%; /* #ffffff - белый текст */
+    --foreground-secondary: 0 0% 64.9%; /* #a6a6a6 - серый текст для вторичной информации */
+    --card: 0 0% 3.9%; /* #0a0a0a - черный фон карточек */
+    --card-foreground: 0 0% 100%; /* белый текст на карточках */
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 9.8%; /* #191919 - темно-серый для secondary */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 9.8%;
+    --muted-foreground: 0 0% 64.9%;
+    --accent: 0 0% 9.8%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 14.9%; /* #262626 - темные границы */
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+
+    /* Accent colors remain the same in dark mode */
+    --accent-lime: 75 100% 50%;
+    --accent-lime-dark: 75 100% 25%; /* Еще темнее для in_progress */
+    --accent-lime-dim: 75 100% 25%;
+    --accent-lime-foreground: 0 0% 10%;
+    
+    /* Today marker color */
+    --today-marker: 320 100% 50%; /* #FF00BF - розовый/маджента */
+    
+    /* Milestone color */
+    --milestone-yellow: 60 100% 50%; /* #FFFF00 - желтый для милстоунов */
+
+    /* Status colors for dark mode */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+    --error: 0 72% 51%;
+    --error-foreground: 0 0% 98%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 98%;
+    --milestone: 271 81% 56%;
+    --milestone-foreground: 0 0% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    transition: background-color 250ms ease, color 250ms ease;
+  }
+
+  /* Smooth transitions for theme switching */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 250ms;
+  }
+
+  /* GPU acceleration for performance */
+  .gpu-accelerated {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+  }
+
+  /* Reduced motion for accessibility */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Widget container styles - как на скриншоте */
+  .widget-container {
+    @apply bg-card border border-border rounded-lg;
+    background-color: hsl(var(--card));
+    border-color: hsl(var(--border));
+    transition: box-shadow 250ms ease, transform 250ms ease;
+  }
+
+  .widget-container:hover {
+    @apply shadow-lg;
+  }
+
+  /* KPI Card styles - как на скриншоте */
+  .kpi-card {
+    @apply bg-card border border-border rounded-lg p-6;
+    background-color: hsl(var(--card));
+    border-color: hsl(var(--border));
+    transition: all 250ms ease;
+  }
+
+  .kpi-card:hover {
+    @apply shadow-lg;
+    border-color: hsl(var(--border));
+    transform: translateY(-1px);
+  }
+
+  /* Gantt chart - new design (orange accent, dark panel) */
+  .gantt-task-bar {
+    transition: all 250ms ease;
+    will-change: transform, box-shadow;
+  }
+
+  .gantt-task-bar:hover {
+    box-shadow: 0 0 12px rgb(249 115 22 / 0.5);
+    transform: translateY(-1px);
+  }
+
+  .gantt-progress-fill {
+    background: rgb(249 115 22);
+    transition: width 300ms ease;
+  }
+
+  .gantt-today-marker {
+    background: hsl(var(--today-marker));
+    box-shadow: 0 0 8px hsl(var(--today-marker) / 0.5);
+  }
+
+  /* Timeline view grid */
+  .gantt-grid {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    height: 100%;
+  }
+
+  /* Active filter chip */
+  .filter-chip-active {
+    @apply bg-accent-lime text-accent-lime-foreground;
+    box-shadow: 0 0 8px hsl(var(--accent-lime) / 0.4);
+  }
+
+  /* Focus states for accessibility */
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-lime focus-visible:ring-offset-2;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .widget-container,
+    .kpi-card {
+      @apply border-2;
+    }
+  }
+
+}
