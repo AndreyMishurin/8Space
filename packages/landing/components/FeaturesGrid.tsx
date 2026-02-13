@@ -41,7 +41,7 @@ const features = [
       <div className="px-6 max-w-[600px] flex flex-col gap-4 overflow-hidden">
         {[
           {
-            text: "Add LemonSqueezy integration to the boilerplate",
+            text: "Add calendar view to the project board",
             secondaryText: "Yes, ship this! ✅",
             votes: 48,
             transition: "group-hover:-mt-36 group-hover:md:-mt-28 duration-500",
@@ -194,7 +194,7 @@ const features = [
             text: "Can we have a feature to add a custom domain to IndiePage?",
             userImg:
               "https://pbs.twimg.com/profile_images/1514863683574599681/9k7PqDTA_400x400.jpg",
-            userName: "Marc Lou",
+            userName: "Oko Team",
             createdAt: "2024-09-01T00:00:00Z",
           },
           {

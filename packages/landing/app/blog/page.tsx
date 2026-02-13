@@ -7,7 +7,7 @@ import { getSEOTags } from "@/libs/seo";
 export const metadata = getSEOTags({
   title: `${config.appName} Blog`,
   description:
-    "Learn how to ship your startup in days, not weeks",
+    "Tips, tutorials, and updates from the Oko team",
   canonicalUrlRelative: "/blog",
 });
 
@@ -25,8 +25,7 @@ export default async function Blog() {
           The {config.appName} Blog
         </h1>
         <p className="text-lg opacity-80 leading-relaxed">
-          Learn how to ship your startup in days, not weeks. And get the latest
-          updates about the boilerplate
+          Tips, tutorials, and the latest updates from the Oko team
         </p>
       </section>
 

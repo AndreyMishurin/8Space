@@ -11,23 +11,23 @@ const list: {
 }[] = [
   {
     // Optional, use for social media like Twitter. Does not link anywhere but cool to display
-    username: "marclou",
+    username: "jordan_p",
     // REQUIRED
-    name: "Marc Lou",
+    name: "Jordan Park",
     // REQUIRED
-    text: "Really easy to use. The tutorials are really useful and explains how everything works. Hope to ship my next project really fast!",
+    text: "Really easy to use. The interface is intuitive and explains how everything works. Our team is finally aligned on deadlines and priorities. Hope to plan our next sprint even better!",
     // Optional, a statically imported image (usually from your public folder—recommended) or a link to the person's avatar. Shows a fallback letter if not provided
-    img: "https://pbs.twimg.com/profile_images/1514863683574599681/9k7PqDTA_400x400.jpg",
+    img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
   },
   {
-    username: "the_mcnaveen",
-    name: "Naveen",
-    text: "Setting up everything from the ground up is a really hard, and time consuming process. What you pay for will save your time for sure.",
+    username: "alex_chen",
+    name: "Alex Chen",
+    text: "Managing project timelines from scratch was really hard and time consuming. Having a single source of truth for tasks and milestones saves our team countless hours.",
   },
   {
-    username: "wahab",
-    name: "Wahab Shaikh",
-    text: "Easily saves 15+ hrs for me setting up trivial stuff. Now, I can directly focus on shipping features rather than hours of setting up the same technologies from scratch. Feels like a super power! :D",
+    username: "samira",
+    name: "Samira N.",
+    text: "Easily saves 15+ hrs for me each week. Now I can directly focus on what matters rather than chasing status updates in spreadsheets and emails. Feels like a super power! :D",
   },
 ];
 
@@ -87,12 +87,12 @@ const Testimonials3 = () => {
         <div className="flex flex-col text-center w-full mb-20">
           <div className="mb-8">
             <h2 className="sm:text-5xl text-4xl font-extrabold text-base-content">
-              212 makers are already shipping faster!
+              212 teams are already planning better!
             </h2>
           </div>
           <p className="lg:w-2/3 mx-auto leading-relaxed text-base text-base-content/80">
             Don&apos;t take our word for it. Here&apos;s what they have to say
-            about ShipFast.
+            about {config.appName}.
           </p>
         </div>
 

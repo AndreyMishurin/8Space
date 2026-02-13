@@ -40,11 +40,11 @@ const config = {
         priceAnchor: 149,
         features: [
           {
-            name: "NextJS boilerplate",
+            name: "Gantt charts",
           },
-          { name: "User oauth" },
-          { name: "Database" },
-          { name: "Emails" },
+          { name: "Kanban boards" },
+          { name: "Backlog management" },
+          { name: "Google OAuth" },
         ],
       },
       {
@@ -55,18 +55,18 @@ const config = {
         // This plan will look different on the pricing page, it will be highlighted. You can only have one plan with isFeatured: true
         isFeatured: true,
         name: "Advanced",
-        description: "You need more power",
+        description: "For growing teams",
         price: 149,
         priceAnchor: 299,
         features: [
           {
-            name: "NextJS boilerplate",
+            name: "Gantt charts",
           },
-          { name: "User oauth" },
-          { name: "Database" },
-          { name: "Emails" },
-          { name: "1 year of updates" },
-          { name: "24/7 support" },
+          { name: "Kanban boards" },
+          { name: "Backlog management" },
+          { name: "Google OAuth" },
+          { name: "Priority support" },
+          { name: "Unlimited projects" },
         ],
       },
     ],
@@ -79,11 +79,11 @@ const config = {
   },
   resend: {
     // REQUIRED — Email 'From' field to be used when sending magic login links
-    fromNoReply: `ShipFast <noreply@resend.shipfa.st>`,
-    // REQUIRED — Email 'From' field to be used when sending other emails, like abandoned carts, updates etc..
-    fromAdmin: `Marc at ShipFast <marc@resend.shipfa.st>`,
-    // Email shown to customer if they need support. Leave empty if not needed => if empty, set up Crisp above, otherwise you won't be able to offer customer support."
-    supportEmail: "marc.louvion@gmail.com",
+    fromNoReply: `Oko <noreply@oko.app>`,
+    // REQUIRED — Email 'From' field to be used when sending other emails
+    fromAdmin: `Oko Team <hello@oko.app>`,
+    // Email shown to customer if they need support
+    supportEmail: "support@oko.app",
   },
   colors: {
     // REQUIRED — The DaisyUI theme to use (added to the main layout.js). Leave blank for default (light & dark mode). If you use any theme other than light/dark, you need to add it in config.tailwind.js in daisyui.themes.

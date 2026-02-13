@@ -80,85 +80,73 @@ const list: {
 }[] = [
   {
     // Show @username for social media like Twitter. Does not link anywhere but cool to display
-    username: "marclou",
-    name: "Marc Lou",
-    text: "Really easy to use. The tutorials are really useful and explains how everything works. Hope to ship my next project really fast!",
-    // use refTypes.other if you don't want to display an icon
+    username: "jordan_p",
+    name: "Jordan Park",
+    text: "Really easy to use. The interface is intuitive and explains how everything works. Our team is finally aligned on deadlines. Hope to plan our next sprint even better!",
     type: refTypes.twitter,
-    // Link to the person's testimonial. It's more trustable
-    link: "https://twitter.com/marc_louvion",
-    // A statically imported image (usually from your public folder—recommended) or a link to the person's avatar. Shows a fallback letter if not provided
-    img: "https://pbs.twimg.com/profile_images/1514863683574599681/9k7PqDTA_400x400.jpg",
-    // You can display video testimonials to build more trust. Just swap the type above to "video" and add at least the video source below
-    // videoSrc: "/jack.mp4"
+    link: "https://twitter.com/jordan_p",
+    img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
   },
   {
-    username: "the_mcnaveen",
-    name: "Naveen",
-    text: "Setting up everything from the ground up is a really hard, and time consuming process. What you pay for will save your time for sure.",
+    username: "alex_chen",
+    name: "Alex Chen",
+    text: "Managing project timelines from scratch was really hard and time consuming. Having a single source of truth for tasks and milestones saves our team countless hours.",
     type: refTypes.twitter,
-    link: "https://twitter.com/the_mcnaveen",
+    link: "https://twitter.com/alex_chen",
   },
   {
-    username: "wahab",
-    name: "Wahab Shaikh",
-    text: "Easily saves 15+ hrs for me setting up trivial stuff. Now, I can directly focus on shipping features rather than hours of setting up the same technologies from scratch. Feels like a super power! :D",
-    type: refTypes.productHunt,
-    link: "https://www.producthunt.com/products/shipfast-2/reviews?review=667971",
+    username: "samira",
+    name: "Samira N.",
+    text: "Easily saves 15+ hrs for me each week. Now I can directly focus on what matters rather than chasing status updates in spreadsheets. Feels like a super power! :D",
+    type: refTypes.other,
   },
   {
     name: "Sean",
-    text: "Just purchased and cloned and *holy shit!* I realllyyy like what I'm seeing here!",
+    text: "Just started using it and *wow!* I really like what I'm seeing here. Clean interface, intuitive workflows.",
     type: refTypes.other,
   },
   {
-    username: "krishna",
-    name: "Krishna Kant",
-    text: "Finally a good boilerplate for Nextjs, now I dont have to cry about it comparing with laravel ecosystem.",
-    type: refTypes.productHunt,
-    link: "https://www.producthunt.com/posts/shipfast-2?comment=2707061",
+    username: "krishna_k",
+    name: "Krishna K.",
+    text: "Finally a proper project management tool that just works. No more juggling Trello, Notion, and Slack for the same info. Everything in one place.",
+    type: refTypes.other,
   },
   {
-    username: "imgyf",
+    username: "yifan_g",
     name: "Yifan Goh",
-    text: "It's a game changer  🚀 Comes with easy to follow tutorial, and saves you a ton of time. What's not to love?",
+    text: "It's a game changer 🚀 Clear views, easy to follow workflows, and saves our team a ton of time. What's not to love?",
     type: refTypes.twitter,
-    link: "https://twitter.com/imgyf/status/1697549891080532236?s=20",
+    link: "https://twitter.com/yifan_g",
   },
   {
     name: "Yazdun",
-    text: "Yo Marc, I got the boilerplate, it's fantastic man you just save me 10 hours on each project",
+    text: "Been looking for something like this for ages. Saves me 10 hours on each project—no more scattered spreadsheets and endless status meetings.",
     type: refTypes.other,
   },
   {
-    name: "Marc Lou",
-    text: "The tool is exactly what I didn't even know I needed.",
-    videoPoster: "https://d1wkquwg5s1b04.cloudfront.net/demo/marcPoster.jpg",
-    videoSrc: "https://d1wkquwg5s1b04.cloudfront.net/demo/marcVideo.mp4",
-    videoHeight: 250,
-    videoWidth: 500,
-    type: refTypes.video,
+    name: "Taylor Reed",
+    text: "The tool is exactly what I didn't even know I needed. Keeps our distributed team on the same page.",
+    type: refTypes.other,
   },
   {
-    username: "zawwadx",
-    name: "Zawwad Ul Sami",
-    text: "It's an amazing minimalist, lightweight boilerplate with well-organized code. It has almost all the core features you would want in a SaaS boilerplate. As a new team last year it actually took us months to build a similar set of features at a stable level.",
+    username: "zawwad",
+    name: "Zawwad U.",
+    text: "Minimalist and lightweight with all the core features we need. As a new team last year it took us months to build something similar. Wish we had found this sooner.",
     type: refTypes.twitter,
   },
   {
-    username: "dan",
-    name: "Dan Mindru",
-    text: "Probably one of the most powerful things you can 'npm install' that I've seen",
-    type: refTypes.productHunt,
-    link: "https://www.producthunt.com/posts/shipfast-2?comment=2706763",
+    username: "dan_m",
+    name: "Dan M.",
+    text: "Probably one of the most practical tools for project planning I've tried. Clean, focused, and it actually gets used.",
+    type: refTypes.other,
   },
   // The last testimonial is featured on big devices (span 2 columns + big font) 👇
   {
-    username: "VicPivots",
-    name: "Victor Abeledo",
-    text: "Marc, I got your boilerplate and having the payments setup with Stripe + user auth is a blessing. This will save me like a week of work for each new side project I spin up. I appreciate that is well documented, as well. 100% worth it 🚀🚀🚀",
+    username: "victor_a",
+    name: "Victor A.",
+    text: "Having a clear view of all our deliverables and dependencies in one place is a blessing. This saves us like a week of planning for each new project. Well documented and intuitive. 100% worth it 🚀🚀🚀",
     type: refTypes.twitter,
-    link: "https://twitter.com/VicPivots/status/1697352442986250413?s=20",
+    link: "https://twitter.com/victor_a",
   },
 ];
 
@@ -366,7 +354,7 @@ const Testimonials11 = () => {
         <div className="flex flex-col text-center w-full mb-20">
           <div className="mb-8">
             <h2 className="sm:text-5xl text-4xl font-extrabold text-base-content">
-              212 makers are already shipping faster!
+              212 teams are already planning better!
             </h2>
           </div>
           <p className="lg:w-2/3 mx-auto leading-relaxed text-base text-base-content/80">
