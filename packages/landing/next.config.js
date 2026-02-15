@@ -27,12 +27,20 @@ const nextConfig = {
     if (process.env.NODE_ENV === "development") {
       return [
         {
+          source: "/app",
+          destination: "http://localhost:5173/app/",
+        },
+        {
           source: "/app/:path*",
           destination: "http://localhost:5173/app/:path*",
         },
       ];
     }
     return [
+      {
+        source: "/app",
+        destination: "/app/index.html",
+      },
       {
         source: "/app/:path*",
         destination: "/app/index.html",
