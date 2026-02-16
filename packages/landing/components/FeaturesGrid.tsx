@@ -194,7 +194,7 @@ const features = [
             text: "Can we have a feature to add a custom domain to IndiePage?",
             userImg:
               "https://pbs.twimg.com/profile_images/1514863683574599681/9k7PqDTA_400x400.jpg",
-            userName: "Oko Team",
+            userName: "8Space Team",
             createdAt: "2024-09-01T00:00:00Z",
           },
           {

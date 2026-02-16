@@ -38,7 +38,7 @@ const Footer = () => {
             </p>
 
             <span className="mt-4 inline-block rounded bg-neutral px-2 py-1 text-sm text-neutral-content ring-1 ring-base-content/10">
-              Built with Oko
+              Built with 8Space
             </span>
           </div>
           <div className="flex-grow flex flex-wrap justify-center -mb-10 md:mt-0 mt-10 text-center">

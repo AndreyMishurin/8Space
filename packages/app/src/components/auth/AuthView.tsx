@@ -42,7 +42,7 @@ export function AuthView() {
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
       <div className="w-full max-w-md border border-border rounded-xl bg-card p-6 shadow-lg space-y-6">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-semibold">Oko</h1>
+          <h1 className="text-2xl font-semibold">8Space</h1>
           <p className="text-sm text-muted-foreground">Sign in to your local Supabase workspace.</p>
         </div>
 

@@ -25,17 +25,17 @@ export const categories: categoryType[] = [
     title: "New Features",
     titleShort: "Features",
     description:
-      "Here are the latest features we've added to Oko. We're constantly improving to help your team plan better.",
-    descriptionShort: "Latest features added to Oko.",
+      "Here are the latest features we've added to 8Space. We're constantly improving to help your team plan better.",
+    descriptionShort: "Latest features added to 8Space.",
   },
   {
     slug: categorySlugs.tutorial,
     title: "How Tos & Tutorials",
     titleShort: "Tutorials",
     description:
-      "Learn how to use Oko with these step-by-step tutorials. Get your team up and running in minutes.",
+      "Learn how to use 8Space with these step-by-step tutorials. Get your team up and running in minutes.",
     descriptionShort:
-      "Learn how to use Oko with these step-by-step tutorials.",
+      "Learn how to use 8Space with these step-by-step tutorials.",
   },
 ];
 
@@ -99,22 +99,22 @@ const socialIcons: {
 const authorSlugs: {
   [key: string]: string;
 } = {
-  oko_team: "oko-team",
+  space_team: "8space-team",
 };
 
 export const authors: authorType[] = [
   {
-    slug: authorSlugs.oko_team,
-    name: "Oko Team",
-    job: "Building Oko",
+    slug: authorSlugs.space_team,
+    name: "8Space Team",
+    job: "Building 8Space",
     description:
-      "The team behind Oko — a collaborative project management tool with Gantt charts, kanban boards, and backlog management.",
-    avatar: "https://ui-avatars.com/api/?name=Oko&background=f97316&color=fff&size=128",
+      "The team behind 8Space — a collaborative project management tool with Gantt charts, kanban boards, and backlog management.",
+    avatar: "https://ui-avatars.com/api/?name=8Space&background=f97316&color=fff&size=128",
     socials: [
       {
         name: socialIcons.github.name,
         icon: socialIcons.github.svg,
-        url: "https://github.com/AndreyMishurin/Oko",
+        url: "https://github.com/AndreyMishurin/8Space",
       },
     ],
   },
@@ -155,24 +155,24 @@ const styles: {
 export const articles: articleType[] = [
   {
     slug: "introducing-supabase",
-    title: "How Oko Uses Supabase for Auth and Data",
+    title: "How 8Space Uses Supabase for Auth and Data",
     description:
-      "Supabase is an open-source Firebase alternative that powers Oko's authentication, database, and real-time features.",
+      "Supabase is an open-source Firebase alternative that powers 8Space's authentication, database, and real-time features.",
     categories: [
       categories.find((category) => category.slug === categorySlugs.feature),
     ],
-    author: authors.find((author) => author.slug === authorSlugs.oko_team),
+    author: authors.find((author) => author.slug === authorSlugs.space_team),
     publishedAt: "2025-01-15",
     image: {
       src: introducingSupabaseImg,
       urlRelative: "/blog/introducing-supabase/header.jpg",
-      alt: "Supabase and Oko integration",
+      alt: "Supabase and 8Space integration",
     },
     content: (
       <>
         <Image
           src={introducingSupabaseImg}
-          alt="Supabase and Oko integration"
+          alt="Supabase and 8Space integration"
           width={700}
           height={500}
           priority={true}
@@ -183,7 +183,7 @@ export const articles: articleType[] = [
           <h2 className={styles.h2}>Introduction</h2>
           <p className={styles.p}>
             Supabase is an open-source Firebase alternative. It powers
-            Oko&apos;s authentication, PostgreSQL database, and row-level
+            8Space&apos;s authentication, PostgreSQL database, and row-level
             security — enabling a fully collaborative, single-tenant workspace
             where all team members can manage projects together.
           </p>
@@ -196,7 +196,7 @@ export const articles: articleType[] = [
             <a href="https://supabase.com/" className="link link-primary">
               Supabase
             </a>{" "}
-            and create a free project. Oko uses Supabase for Google OAuth login,
+            and create a free project. 8Space uses Supabase for Google OAuth login,
             PostgreSQL database with RLS policies, and real-time subscriptions.
           </p>
         </section>
@@ -211,7 +211,7 @@ export const articles: articleType[] = [
 
           <ul className={styles.ul}>
             <li className={styles.li}>.env.local (for the landing page)</li>
-            <li className={styles.li}>.env (for the Oko app)</li>
+            <li className={styles.li}>.env (for the 8Space app)</li>
           </ul>
         </section>
       </>

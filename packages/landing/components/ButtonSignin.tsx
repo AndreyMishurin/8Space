@@ -7,7 +7,7 @@ import { createClient } from "@/libs/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 // A simple button to sign in with Google via Supabase Auth.
-// After login, user is redirected to /app (Oko SPA).
+// After login, user is redirected to /app (8Space SPA).
 // If the user is already logged in, shows their avatar and links to /app.
 const ButtonSignin = ({
   text = "Get started",

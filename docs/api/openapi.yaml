@@ -1,0 +1,1551 @@
+openapi: 3.0.3
+info:
+  title: 8Space Unified API
+  version: 1.0.0
+  description: |-
+    Unified OpenAPI description for the 8Space monorepo.
+
+    Scope:
+    - Landing API (`packages/landing/app/api/**` and `packages/landing/app/auth/callback/route.ts`)
+    - Supabase APIs used by 8Space app (`packages/app/src/**`): Auth, PostgREST tables, and RPC functions.
+
+    Notes:
+    - PostgREST responses depend on the `select` query string; schemas here document the fields used by 8Space.
+    - This spec focuses on endpoints actually called in code, not every endpoint Supabase provides.
+servers:
+  - url: https://8space.app
+    description: 8Space production (landing/API gateway)
+  - url: http://localhost:3000
+    description: Local landing app (Next.js)
+  - url: http://127.0.0.1:54321
+    description: Local Supabase API (from `packages/app/supabase/config.toml`)
+tags:
+  - name: Landing
+    description: Next.js API routes for lead collection and auth callback
+  - name: Billing
+    description: Stripe checkout and customer portal routes
+  - name: Webhooks
+    description: Stripe webhook receiver
+  - name: Supabase Auth
+    description: Auth endpoints used by landing/app clients
+  - name: Supabase Data
+    description: PostgREST table endpoints used by 8Space app
+  - name: Supabase RPC
+    description: PostgreSQL RPC functions used by 8Space app
+paths:
+  /api/lead:
+    post:
+      tags: [Landing]
+      operationId: createLead
+      summary: Store lead email from landing page
+      description: Triggered by `ButtonLead` component.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LeadCreateRequest'
+      responses:
+        '200':
+          description: Lead accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingError'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingError'
+
+  /api/stripe/create-checkout:
+    post:
+      tags: [Billing]
+      operationId: createStripeCheckout
+      summary: Create Stripe Checkout session
+      description: Triggered by `ButtonCheckout` component.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutCreateRequest'
+      responses:
+        '200':
+          description: Checkout session URL generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UrlResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingError'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingError'
+
+  /api/stripe/create-portal:
+    post:
+      tags: [Billing]
+      operationId: createStripeCustomerPortal
+      summary: Create Stripe billing portal session
+      description: |-
+        Triggered by `ButtonAccount` component.
+        Requires authenticated Supabase user cookie/session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortalCreateRequest'
+      responses:
+        '200':
+          description: Billing portal URL generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UrlResponse'
+        '400':
+          description: Missing `returnUrl` or no Stripe customer account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingError'
+        '401':
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingError'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingError'
+
+  /api/webhook/stripe:
+    post:
+      tags: [Webhooks]
+      operationId: handleStripeWebhook
+      summary: Receive Stripe webhook events
+      description: Verifies Stripe signature and handles billing lifecycle events.
+      parameters:
+        - name: stripe-signature
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Stripe webhook signature header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Raw Stripe event payload
+              additionalProperties: true
+          text/plain:
+            schema:
+              type: string
+              description: Raw webhook body before signature verification
+      responses:
+        '200':
+          description: Event accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+        '400':
+          description: Signature verification failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LandingError'
+
+  /auth/callback:
+    get:
+      tags: [Landing]
+      operationId: completeSupabaseOAuthOnLanding
+      summary: Exchange OAuth code and redirect user
+      description: |-
+        Landing callback route.
+        Exchanges Supabase auth code, then redirects to `next` (default `/app`).
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Supabase auth code to exchange for session
+        - name: next
+          in: query
+          required: false
+          schema:
+            type: string
+            default: /app
+          description: Relative redirect path after successful exchange
+      responses:
+        '302':
+          description: Redirect response
+          headers:
+            Location:
+              description: Redirect destination
+              schema:
+                type: string
+
+  /auth/v1/signup:
+    post:
+      tags: [Supabase Auth]
+      operationId: supabaseSignUpWithPassword
+      summary: Sign up with email/password
+      description: Used by `supabase.auth.signUp` in 8Space app.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthSignUpRequest'
+      responses:
+        '200':
+          description: Signup result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          description: Validation/auth error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupabaseError'
+
+  /auth/v1/token:
+    post:
+      tags: [Supabase Auth]
+      operationId: supabaseSignInWithPassword
+      summary: Sign in with password grant
+      parameters:
+        - name: grant_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [password]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthPasswordGrantRequest'
+      responses:
+        '200':
+          description: Access token and user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '400':
+          description: Invalid credentials/request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupabaseError'
+
+  /auth/v1/authorize:
+    get:
+      tags: [Supabase Auth]
+      operationId: supabaseStartOAuthGoogle
+      summary: Start Google OAuth flow
+      description: "Used by `supabase.auth.signInWithOAuth({ provider: \"google\" })`."
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [google]
+        - name: redirect_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect to OAuth provider
+
+  /auth/v1/user:
+    get:
+      tags: [Supabase Auth]
+      operationId: supabaseGetCurrentUser
+      summary: Get authenticated user
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUser'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupabaseError'
+
+  /auth/v1/logout:
+    post:
+      tags: [Supabase Auth]
+      operationId: supabaseSignOut
+      summary: Log out user session
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      responses:
+        '200':
+          description: Session cleared
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupabaseError'
+
+  /rest/v1/profiles:
+    get:
+      tags: [Supabase Data]
+      operationId: listProfiles
+      summary: Query profiles
+      description: Used to load current user's profile (`id=eq.<uuid>`).
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "PostgREST filter. Example: `eq.9b7f...`"
+      responses:
+        '200':
+          description: Profile rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProfileRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+
+  /rest/v1/project_members:
+    get:
+      tags: [Supabase Data]
+      operationId: listProjectMembers
+      summary: Query project membership
+      description: |-
+        Used in 8Space app for:
+        - user projects list (`user_id=eq.<uuid>` + project join)
+        - members of one project (`project_id=eq.<uuid>` + profile join)
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+      responses:
+        '200':
+          description: Project member rows (shape depends on `select`)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectMemberRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+
+  /rest/v1/workflow_columns:
+    get:
+      tags: [Supabase Data]
+      operationId: listWorkflowColumns
+      summary: List project workflow columns
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: project_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            example: position.asc
+      responses:
+        '200':
+          description: Workflow columns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkflowColumnRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+
+  /rest/v1/projects:
+    patch:
+      tags: [Supabase Data]
+      operationId: updateProject
+      summary: Update project settings
+      description: Used by app project settings screen.
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+        - $ref: '#/components/parameters/SelectParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdateRequest'
+      responses:
+        '200':
+          description: Updated project row(s)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+
+  /rest/v1/tasks:
+    get:
+      tags: [Supabase Data]
+      operationId: listTasks
+      summary: List tasks by project
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: project_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            example: order_rank.asc
+      responses:
+        '200':
+          description: Task rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+    post:
+      tags: [Supabase Data]
+      operationId: createTask
+      summary: Create task
+      description: Used by `SupabaseTaskRepository.createTask`.
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreateRequest'
+      responses:
+        '201':
+          description: Created task row(s)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+    patch:
+      tags: [Supabase Data]
+      operationId: updateTask
+      summary: Update task by id filter
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdateRequest'
+      responses:
+        '204':
+          description: Updated (no body when `Prefer` not set)
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+    delete:
+      tags: [Supabase Data]
+      operationId: deleteTask
+      summary: Delete task by id filter
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+
+  /rest/v1/task_assignees:
+    get:
+      tags: [Supabase Data]
+      operationId: listTaskAssignees
+      summary: Query task assignees
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: task_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Example: `in.(<uuid1>,<uuid2>)` or `eq.<uuid>`"
+      responses:
+        '200':
+          description: Assignee rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskAssigneeRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+    post:
+      tags: [Supabase Data]
+      operationId: createTaskAssignees
+      summary: Assign users to task(s)
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/TaskAssigneeCreateRequest'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/TaskAssigneeCreateRequest'
+      responses:
+        '201':
+          description: Rows inserted
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+    delete:
+      tags: [Supabase Data]
+      operationId: deleteTaskAssignees
+      summary: Remove task assignees by filter
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - name: task_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+
+  /rest/v1/task_label_links:
+    get:
+      tags: [Supabase Data]
+      operationId: listTaskLabelLinks
+      summary: Query task labels linked to tasks
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: task_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Example: `in.(<uuid1>,<uuid2>)`"
+      responses:
+        '200':
+          description: Label link rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskLabelLinkRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+
+  /rest/v1/task_checklist_items:
+    get:
+      tags: [Supabase Data]
+      operationId: listTaskChecklistItems
+      summary: Query task checklist items
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: task_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Example: `in.(<uuid1>,<uuid2>)`"
+      responses:
+        '200':
+          description: Checklist item rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskChecklistItemRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+
+  /rest/v1/task_attachments:
+    get:
+      tags: [Supabase Data]
+      operationId: listTaskAttachments
+      summary: Query task attachments
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: task_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Example: `in.(<uuid1>,<uuid2>)`"
+      responses:
+        '200':
+          description: Attachment rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskAttachmentRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+
+  /rest/v1/task_dependencies:
+    get:
+      tags: [Supabase Data]
+      operationId: listTaskDependencies
+      summary: List task dependencies by project
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SelectParam'
+        - name: project_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+      responses:
+        '200':
+          description: Dependency rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskDependencyRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+    post:
+      tags: [Supabase Data]
+      operationId: createTaskDependencies
+      summary: Create task dependencies
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/TaskDependencyCreateRequest'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/TaskDependencyCreateRequest'
+      responses:
+        '201':
+          description: Rows inserted
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+    delete:
+      tags: [Supabase Data]
+      operationId: deleteTaskDependencies
+      summary: Delete dependencies by project/successor filter
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      parameters:
+        - name: project_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+        - name: successor_task_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Example: `eq.<uuid>`"
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+
+  /rest/v1/rpc/create_project_with_defaults:
+    post:
+      tags: [Supabase RPC]
+      operationId: rpcCreateProjectWithDefaults
+      summary: Create new project and default columns
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectWithDefaultsRequest'
+      responses:
+        '200':
+          description: Created project id
+          content:
+            application/json:
+              schema:
+                type: string
+                format: uuid
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+
+  /rest/v1/rpc/current_project_role:
+    post:
+      tags: [Supabase RPC]
+      operationId: rpcCurrentProjectRole
+      summary: Get caller role in project
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CurrentProjectRoleRequest'
+      responses:
+        '200':
+          description: Role value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectRole'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+
+  /rest/v1/rpc/move_task:
+    post:
+      tags: [Supabase RPC]
+      operationId: rpcMoveTask
+      summary: Move task between columns and set rank
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveTaskRequest'
+      responses:
+        '200':
+          description: Updated task row
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskRow'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+
+  /rest/v1/rpc/dashboard_metrics:
+    post:
+      tags: [Supabase RPC]
+      operationId: rpcDashboardMetrics
+      summary: Calculate dashboard metrics
+      security:
+        - SupabaseApiKey: []
+          SupabaseBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DashboardMetricsRequest'
+      responses:
+        '200':
+          description: Metrics object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetrics'
+        '401':
+          $ref: '#/components/responses/SupabaseUnauthorized'
+        '403':
+          $ref: '#/components/responses/SupabaseForbidden'
+
+components:
+  securitySchemes:
+    SupabaseApiKey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: Supabase anon/service key
+    SupabaseBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    SelectParam:
+      name: select
+      in: query
+      required: false
+      schema:
+        type: string
+      description: PostgREST select clause (controls response shape)
+
+  responses:
+    SupabaseUnauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SupabaseError'
+    SupabaseForbidden:
+      description: Forbidden by RLS/policies
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SupabaseError'
+
+  schemas:
+    LeadCreateRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    CheckoutCreateRequest:
+      type: object
+      required: [priceId, successUrl, cancelUrl, mode]
+      properties:
+        priceId:
+          type: string
+        successUrl:
+          type: string
+          format: uri
+        cancelUrl:
+          type: string
+          format: uri
+        mode:
+          type: string
+          enum: [payment, subscription]
+
+    PortalCreateRequest:
+      type: object
+      required: [returnUrl]
+      properties:
+        returnUrl:
+          type: string
+          format: uri
+
+    UrlResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+
+    LandingError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    SupabaseError:
+      type: object
+      properties:
+        message:
+          type: string
+        details:
+          type: string
+          nullable: true
+        hint:
+          type: string
+          nullable: true
+        code:
+          type: string
+          nullable: true
+      additionalProperties: true
+
+    AuthSignUpRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        options:
+          type: object
+          properties:
+            data:
+              type: object
+              properties:
+                name:
+                  type: string
+
+    AuthPasswordGrantRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthTokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in, refresh_token, user]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/AuthUser'
+
+    AuthSessionResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        token_type:
+          type: string
+        user:
+          $ref: '#/components/schemas/AuthUser'
+      additionalProperties: true
+
+    AuthUser:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          nullable: true
+        user_metadata:
+          type: object
+          additionalProperties: true
+        app_metadata:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    ProjectRole:
+      type: string
+      enum: [owner, editor, viewer]
+
+    TaskPriority:
+      type: string
+      enum: [p0, p1, p2]
+
+    WorkflowColumnKind:
+      type: string
+      enum: [backlog, todo, in_progress, done, custom]
+
+    DependencyType:
+      type: string
+      enum: [FS]
+
+    ProfileRow:
+      type: object
+      required: [id, display_name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+
+    ProjectRow:
+      type: object
+      required: [id, name, created_by, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        created_by:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ProjectMemberRow:
+      type: object
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        role:
+          $ref: '#/components/schemas/ProjectRole'
+        project:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/ProjectRow'
+            - type: array
+              items:
+                $ref: '#/components/schemas/ProjectRow'
+        profile:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/ProfileRow'
+            - type: array
+              items:
+                $ref: '#/components/schemas/ProfileRow'
+
+    WorkflowColumnRow:
+      type: object
+      required: [id, project_id, name, kind, position]
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        kind:
+          $ref: '#/components/schemas/WorkflowColumnKind'
+        position:
+          type: integer
+        wip_limit:
+          type: integer
+          nullable: true
+        definition_of_done:
+          type: string
+          nullable: true
+
+    TaskRow:
+      type: object
+      required:
+        - id
+        - project_id
+        - title
+        - status_column_id
+        - priority
+        - order_rank
+        - is_milestone
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status_column_id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        order_rank:
+          type: number
+        description:
+          type: string
+          nullable: true
+        estimate:
+          type: number
+          nullable: true
+        is_milestone:
+          type: boolean
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TaskAssigneeRow:
+      type: object
+      required: [task_id, user_id]
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        profile:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/ProfileRow'
+            - type: array
+              items:
+                $ref: '#/components/schemas/ProfileRow'
+
+    TaskLabelRow:
+      type: object
+      required: [id, project_id, name, color]
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+
+    TaskLabelLinkRow:
+      type: object
+      required: [task_id]
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        label:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/TaskLabelRow'
+            - type: array
+              items:
+                $ref: '#/components/schemas/TaskLabelRow'
+
+    TaskChecklistItemRow:
+      type: object
+      required: [id, task_id, title, is_done, position]
+      properties:
+        id:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        is_done:
+          type: boolean
+        position:
+          type: integer
+
+    TaskAttachmentRow:
+      type: object
+      required: [id, task_id, url, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        title:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    TaskDependencyRow:
+      type: object
+      required: [id, project_id, predecessor_task_id, successor_task_id, type]
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        predecessor_task_id:
+          type: string
+          format: uuid
+        successor_task_id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/DependencyType'
+
+    ProjectUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+      additionalProperties: false
+
+    TaskCreateRequest:
+      type: object
+      required: [project_id, title, status_column_id, start_date, due_date]
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status_column_id:
+          type: string
+          format: uuid
+        start_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        order_rank:
+          type: number
+        description:
+          type: string
+          nullable: true
+        estimate:
+          type: number
+          nullable: true
+        is_milestone:
+          type: boolean
+      additionalProperties: false
+
+    TaskUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        status_column_id:
+          type: string
+          format: uuid
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        order_rank:
+          type: number
+        description:
+          type: string
+          nullable: true
+        estimate:
+          type: number
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_milestone:
+          type: boolean
+      additionalProperties: false
+
+    TaskAssigneeCreateRequest:
+      type: object
+      required: [task_id, user_id]
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+
+    TaskDependencyCreateRequest:
+      type: object
+      required: [project_id, predecessor_task_id, successor_task_id, type]
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        predecessor_task_id:
+          type: string
+          format: uuid
+        successor_task_id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/DependencyType'
+
+    CreateProjectWithDefaultsRequest:
+      type: object
+      required: [p_name]
+      properties:
+        p_name:
+          type: string
+        p_description:
+          type: string
+          nullable: true
+
+    CurrentProjectRoleRequest:
+      type: object
+      required: [p_project_id]
+      properties:
+        p_project_id:
+          type: string
+          format: uuid
+
+    MoveTaskRequest:
+      type: object
+      required: [p_task_id, p_to_column_id, p_new_rank]
+      properties:
+        p_task_id:
+          type: string
+          format: uuid
+        p_to_column_id:
+          type: string
+          format: uuid
+        p_new_rank:
+          type: number
+
+    DashboardMetricsRequest:
+      type: object
+      required: [p_project_id, p_days_window]
+      properties:
+        p_project_id:
+          type: string
+          format: uuid
+        p_days_window:
+          type: integer
+          minimum: 1
+          default: 14
+
+    DashboardWorkloadItem:
+      type: object
+      required: [userId, displayName, activeCount]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        activeCount:
+          type: integer
+
+    CompletionTrendPoint:
+      type: object
+      required: [date, doneCount]
+      properties:
+        date:
+          type: string
+          format: date
+        doneCount:
+          type: integer
+
+    DashboardMetrics:
+      type: object
+      required:
+        - tasksByStatus
+        - overdueCount
+        - dueThisWeek
+        - workloadByAssignee
+        - completionTrend
+      properties:
+        tasksByStatus:
+          type: object
+          additionalProperties:
+            type: integer
+        overdueCount:
+          type: integer
+        dueThisWeek:
+          type: integer
+        workloadByAssignee:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardWorkloadItem'
+        completionTrend:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompletionTrendPoint'

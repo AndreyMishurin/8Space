@@ -9,12 +9,12 @@ const themes = {
 
 const config = {
   // REQUIRED
-  appName: "Oko",
+  appName: "8Space",
   // REQUIRED: a short description of your app for SEO tags (can be overwritten)
   appDescription:
-    "Oko — collaborative team planner with Gantt charts, kanban boards, and backlog management.",
+    "8Space — collaborative team planner with Gantt charts, kanban boards, and backlog management.",
   // REQUIRED (no https://, not trailing slash at the end, just the naked domain)
-  domainName: "oko.app",
+  domainName: "8space.app",
   crisp: {
     // Crisp website ID. IF YOU DON'T USE CRISP: just remove this => Then add a support email in this config file (resend.supportEmail) otherwise customer support won't work.
     id: "",
@@ -79,11 +79,11 @@ const config = {
   },
   resend: {
     // REQUIRED — Email 'From' field to be used when sending magic login links
-    fromNoReply: `Oko <noreply@oko.app>`,
+    fromNoReply: `8Space <noreply@8space.app>`,
     // REQUIRED — Email 'From' field to be used when sending other emails
-    fromAdmin: `Oko Team <hello@oko.app>`,
+    fromAdmin: `8Space Team <hello@8space.app>`,
     // Email shown to customer if they need support
-    supportEmail: "support@oko.app",
+    supportEmail: "support@8space.app",
   },
   colors: {
     // REQUIRED — The DaisyUI theme to use (added to the main layout.js). Leave blank for default (light & dark mode). If you use any theme other than light/dark, you need to add it in config.tailwind.js in daisyui.themes.

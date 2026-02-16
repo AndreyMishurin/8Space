@@ -142,7 +142,7 @@ export function AppShell() {
       <aside className="w-72 bg-card border-r border-border flex flex-col">
         <div className="h-16 px-4 border-b border-border flex items-center justify-between shrink-0">
           <Link to="/" className="font-semibold text-lg tracking-tight">
-            Oko
+            8Space
           </Link>
           <ThemeToggle />
         </div>

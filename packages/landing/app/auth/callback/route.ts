@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Successful auth — redirect to the Oko app
+      // Successful auth — redirect to the 8Space app
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

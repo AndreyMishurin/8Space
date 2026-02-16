@@ -20,7 +20,7 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider defaultTheme="dark" attribute="class" storageKey="oko-ui-theme">
+    <ThemeProvider defaultTheme="dark" attribute="class" storageKey="8space-ui-theme">
       <QueryClientProvider client={queryClient}>
         <BrowserRouter basename="/app">
           <AuthProvider>

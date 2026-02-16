@@ -450,7 +450,7 @@ const FeaturesListicle = () => {
           </h2>
           <div className="text-base-content/80 leading-relaxed mb-8 lg:text-lg">
             {/* 💡 COPY TIP: Explain how your product delivers what you promise in the headline. */}
-            Create boards, organize tasks, and collaborate with your team. Oko
+            Create boards, organize tasks, and collaborate with your team. 8Space
             brings projects, timelines, and feedback into one place so you can
             focus on shipping — not juggling tools.
           </div>
