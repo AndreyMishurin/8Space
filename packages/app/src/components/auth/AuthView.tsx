@@ -5,6 +5,57 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 
+type AuthMode = 'signin' | 'signup';
+type FieldErrors = Partial<Record<'name' | 'email' | 'password' | 'form', string>>;
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function normalizeAuthError(error: unknown, mode: AuthMode): FieldErrors {
+  const rawMessage =
+    error instanceof Error ? error.message : typeof error === 'string' ? error : 'Authentication failed';
+  const message = rawMessage.toLowerCase();
+
+  if (message.includes('already registered') || message.includes('user already exists')) {
+    return { email: 'A user with this email already exists. Please sign in or use another email.' };
+  }
+
+  if (message.includes('invalid email') || message.includes('unable to validate email')) {
+    return { email: 'Please enter a valid email address.' };
+  }
+
+  if (message.includes('password') && message.includes('least')) {
+    return { password: 'Password is too short. Use at least 6 characters.' };
+  }
+
+  if (message.includes('password') && message.includes('weak')) {
+    return { password: 'Password is too weak. Use a stronger password.' };
+  }
+
+  if (message.includes('rate limit') || message.includes('too many requests')) {
+    return { form: 'Too many attempts. Please wait and try again.' };
+  }
+
+  if (message.includes('invalid login credentials')) {
+    return { form: 'Invalid email or password.' };
+  }
+
+  if (message.includes('failed to fetch') || message.includes('network') || message.includes('timeout')) {
+    return { form: 'Cannot reach auth server. Make sure local Supabase is running.' };
+  }
+
+  if (mode === 'signup' && (message.includes('422') || message.includes('unprocessable'))) {
+    return { form: 'Sign up failed: check email format and password requirements.' };
+  }
+
+  if (mode === 'signin' && (message.includes('400') || message.includes('bad request'))) {
+    return { form: 'Sign in failed: check email and password.' };
+  }
+
+  return { form: rawMessage };
+}
+
 export function AuthView() {
   const { signInWithPassword, signUpWithPassword, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -13,26 +64,44 @@ export function AuthView() {
   const [password, setPassword] = useState('password123');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
 
   const isSignUp = mode === 'signup';
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
+    setErrors({});
     setLoading(true);
 
+    const nextErrors: FieldErrors = {};
+
     try {
+      const normalizedEmail = email.trim();
+      if (!isValidEmail(normalizedEmail)) {
+        nextErrors.email = 'Please enter a valid email address.';
+      }
+
       if (isSignUp) {
         if (!name.trim()) {
-          throw new Error('Name is required for sign up.');
+          nextErrors.name = 'Name is required for sign up.';
         }
-        await signUpWithPassword(email.trim(), password, name.trim());
+        if (password.length < 6) {
+          nextErrors.password = 'Password is too short. Use at least 6 characters.';
+        }
+      }
+
+      if (Object.keys(nextErrors).length > 0) {
+        setErrors(nextErrors);
+        return;
+      }
+
+      if (isSignUp) {
+        await signUpWithPassword(normalizedEmail, password, name.trim());
       } else {
-        await signInWithPassword(email.trim(), password);
+        await signInWithPassword(normalizedEmail, password);
       }
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Authentication failed');
+      setErrors(normalizeAuthError(submitError, mode));
     } finally {
       setLoading(false);
     }
@@ -53,11 +122,11 @@ export function AuthView() {
           disabled={googleLoading}
           onClick={async () => {
             setGoogleLoading(true);
-            setError(null);
+            setErrors({});
             try {
               await signInWithGoogle();
             } catch (e) {
-              setError(e instanceof Error ? e.message : 'Google sign-in failed');
+              setErrors({ form: e instanceof Error ? e.message : 'Google sign-in failed' });
               setGoogleLoading(false);
             }
           }}
@@ -95,7 +164,10 @@ export function AuthView() {
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant={mode === 'signin' ? 'default' : 'outline'}
-            onClick={() => setMode('signin')}
+            onClick={() => {
+              setMode('signin');
+              setErrors({});
+            }}
             type="button"
           >
             <LogIn className="size-4" />
@@ -103,7 +175,10 @@ export function AuthView() {
           </Button>
           <Button
             variant={mode === 'signup' ? 'default' : 'outline'}
-            onClick={() => setMode('signup')}
+            onClick={() => {
+              setMode('signup');
+              setErrors({});
+            }}
             type="button"
           >
             <UserPlus className="size-4" />
@@ -118,9 +193,23 @@ export function AuthView() {
               <Input
                 id="name"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setErrors((current) => {
+                    const { name: _name, form: _form, ...rest } = current;
+                    return rest;
+                  });
+                }}
                 placeholder="Your display name"
+                className={errors.name ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                aria-invalid={Boolean(errors.name)}
+                aria-describedby={errors.name ? 'name-error' : undefined}
               />
+              {errors.name && (
+                <p id="name-error" className="text-sm text-error">
+                  {errors.name}
+                </p>
+              )}
             </div>
           )}
           <div className="space-y-2">
@@ -129,10 +218,24 @@ export function AuthView() {
               id="email"
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setErrors((current) => {
+                  const { email: _email, form: _form, ...rest } = current;
+                  return rest;
+                });
+              }}
               placeholder="owner@gantt.local"
               required
+              className={errors.email ? 'border-destructive focus-visible:ring-destructive' : undefined}
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? 'email-error' : undefined}
             />
+            {errors.email && (
+              <p id="email-error" className="text-sm text-error">
+                {errors.email}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
@@ -140,13 +243,27 @@ export function AuthView() {
               id="password"
               type="password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setErrors((current) => {
+                  const { password: _password, form: _form, ...rest } = current;
+                  return rest;
+                });
+              }}
               placeholder="password123"
               required
+              className={errors.password ? 'border-destructive focus-visible:ring-destructive' : undefined}
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={errors.password ? 'password-error' : undefined}
             />
+            {errors.password && (
+              <p id="password-error" className="text-sm text-error">
+                {errors.password}
+              </p>
+            )}
           </div>
 
-          {error && <p className="text-sm text-error">{error}</p>}
+          {errors.form && <p className="text-sm text-error">{errors.form}</p>}
 
           <Button className="w-full" type="submit" disabled={loading}>
             {loading ? 'Please wait…' : isSignUp ? 'Create account' : 'Sign in'}

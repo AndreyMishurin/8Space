@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CalendarCheck2, ChartNoAxesColumn, CheckCheck, Gauge, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useDashboardMetrics } from '@/hooks/use-dashboard-metrics';
+import { ErrorScreen } from '@/components/ErrorScreen';
+import { getErrorMessage } from '@/lib/errors';
 
 interface DashboardViewProps {
+  tenantSlug: string;
   projectId: string;
 }
 
@@ -27,7 +31,7 @@ function MetricCard({ title, value, icon: Icon, hint }: MetricCardProps) {
   );
 }
 
-export function DashboardView({ projectId }: DashboardViewProps) {
+export function DashboardView({ tenantSlug: _tenantSlug, projectId }: DashboardViewProps) {
   const [daysWindow, setDaysWindow] = useState<7 | 14>(14);
   const metricsQuery = useDashboardMetrics(projectId, daysWindow);
 
@@ -45,6 +49,27 @@ export function DashboardView({ projectId }: DashboardViewProps) {
   }, [metrics]);
 
   const maxTrend = Math.max(...(metrics?.completionTrend.map((point) => point.doneCount) ?? [1]));
+
+  if (metricsQuery.isLoading) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 p-6">
+        <Spinner variant="infinite" size={40} />
+        <p className="text-sm text-muted-foreground">Loading dashboard…</p>
+      </div>
+    );
+  }
+
+  if (metricsQuery.isError) {
+    return (
+      <ErrorScreen
+        variant="inline"
+        code={500}
+        message={getErrorMessage(metricsQuery.error)}
+        onRetry={() => metricsQuery.refetch()}
+        showGoHome={false}
+      />
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

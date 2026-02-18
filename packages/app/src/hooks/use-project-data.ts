@@ -7,14 +7,16 @@ import type {
   Project,
   ProjectMember,
   Task,
+  Tenant,
   UpdateTaskInlineInput,
   WorkflowColumn,
 } from '@/domain/types';
-import { projectRepository, taskRepository } from '@/domain/repositories';
+import { projectRepository, taskRepository, tenantRepository } from '@/domain/repositories';
 import { useAuth } from '@/hooks/use-auth';
 
 export const queryKeys = {
-  projects: (userId: string) => ['projects', userId] as const,
+  tenants: (userId: string) => ['tenants', userId] as const,
+  projects: (userId: string, tenantSlug: string) => ['tenants', tenantSlug, 'projects', userId] as const,
   columns: (projectId: string) => ['projects', projectId, 'columns'] as const,
   members: (projectId: string) => ['projects', projectId, 'members'] as const,
   tasks: (projectId: string) => ['projects', projectId, 'tasks'] as const,
@@ -27,23 +29,53 @@ function sortByRank(tasks: Task[]) {
   return [...tasks].sort((a, b) => a.orderRank - b.orderRank);
 }
 
-export function useProjects() {
+export function useTenants() {
   const { user } = useAuth();
 
-  return useQuery({
-    queryKey: queryKeys.projects(user?.id ?? 'anonymous'),
+  return useQuery<Tenant[]>({
+    queryKey: queryKeys.tenants(user?.id ?? 'anonymous'),
     queryFn: async () => {
       if (!user?.id) {
         return [];
       }
-      return projectRepository.listProjects(user.id);
+      return tenantRepository.listTenants(user.id);
     },
     enabled: Boolean(user?.id),
+    retry: false,
   });
 }
 
-export function useProject(projectId: string | undefined) {
-  const projectsQuery = useProjects();
+export function useCreateTenant() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (input: { name: string; preferredSlug?: string }) =>
+      tenantRepository.createTenantWithOwner(input.name, input.preferredSlug),
+    onSuccess: async () => {
+      if (!user?.id) return;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.tenants(user.id) });
+    },
+  });
+}
+
+export function useProjects(tenantSlug: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.projects(user?.id ?? 'anonymous', tenantSlug ?? 'no-tenant'),
+    queryFn: async () => {
+      if (!user?.id || !tenantSlug) {
+        return [];
+      }
+      return projectRepository.listProjects(user.id, tenantSlug);
+    },
+    enabled: Boolean(user?.id && tenantSlug),
+  });
+}
+
+export function useProject(projectId: string | undefined, tenantSlug: string | undefined) {
+  const projectsQuery = useProjects(tenantSlug);
 
   return useMemo<Project | undefined>(() => {
     if (!projectId) {
@@ -54,16 +86,20 @@ export function useProject(projectId: string | undefined) {
   }, [projectId, projectsQuery.data]);
 }
 
-export function useCreateProject() {
+export function useCreateProject(tenantSlug: string | undefined) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (input: CreateProjectInput) => projectRepository.createProjectWithDefaults(input),
-    onSuccess: async () => {
-      if (user?.id) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.projects(user.id) });
+    mutationFn: async (input: CreateProjectInput) => {
+      if (!tenantSlug) {
+        throw new Error('Tenant is required');
       }
+      return projectRepository.createProjectWithDefaults(tenantSlug, input);
+    },
+    onSuccess: async () => {
+      if (!user?.id || !tenantSlug) return;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.projects(user.id, tenantSlug) });
     },
   });
 }
@@ -356,7 +392,7 @@ export function useDeleteTask(projectId: string | undefined) {
   });
 }
 
-export function useUpdateProjectSettings(projectId: string | undefined) {
+export function useUpdateProjectSettings(projectId: string | undefined, tenantSlug: string | undefined) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
@@ -372,8 +408,8 @@ export function useUpdateProjectSettings(projectId: string | undefined) {
       });
     },
     onSuccess: async () => {
-      if (!projectId || !user?.id) return;
-      await queryClient.invalidateQueries({ queryKey: queryKeys.projects(user.id) });
+      if (!projectId || !user?.id || !tenantSlug) return;
+      await queryClient.invalidateQueries({ queryKey: queryKeys.projects(user.id, tenantSlug) });
     },
   });
 }

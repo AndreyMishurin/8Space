@@ -14,12 +14,14 @@ import type {
   TaskChecklistItem,
   TaskDependency,
   TaskLabel,
+  Tenant,
+  TenantRole,
   UpdateTaskInlineInput,
   UserProfile,
   WorkflowColumn,
   WorkflowColumnKind,
 } from '@/domain/types';
-import type { DashboardRepository, ProjectRepository, TaskRepository } from '@/domain/repositories/interfaces';
+import type { DashboardRepository, ProjectRepository, TaskRepository, TenantRepository } from '@/domain/repositories/interfaces';
 
 interface ProfileRow {
   id: string;
@@ -29,6 +31,7 @@ interface ProfileRow {
 
 interface ProjectRow {
   id: string;
+  tenant_id: string;
   name: string;
   description: string | null;
   created_by: string;
@@ -39,6 +42,18 @@ interface ProjectRow {
 interface ProjectMemberJoinedRow {
   role: ProjectRole;
   project: ProjectRow | ProjectRow[] | null;
+}
+
+interface TenantRow {
+  id: string;
+  name: string;
+  slug: string;
+  archived_at: string | null;
+}
+
+interface TenantMemberJoinedRow {
+  role: TenantRole;
+  tenant: TenantRow | TenantRow[] | null;
 }
 
 interface ProjectMemberRow {
@@ -132,6 +147,15 @@ function requireData<T>(value: T | null, message: string): T {
   return value;
 }
 
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, label: string): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) =>
+      window.setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
+}
+
 function mapProfile(row: ProfileRow | undefined): UserProfile | undefined {
   if (!row) {
     return undefined;
@@ -147,11 +171,21 @@ function mapProfile(row: ProfileRow | undefined): UserProfile | undefined {
 function mapProject(row: ProjectRow, role: ProjectRole): Project {
   return {
     id: row.id,
+    tenantId: row.tenant_id,
     name: row.name,
     description: row.description,
     createdBy: row.created_by,
     createdAt: row.created_at,
     archivedAt: row.archived_at,
+    role,
+  };
+}
+
+function mapTenant(row: TenantRow, role: TenantRole): Tenant {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
     role,
   };
 }
@@ -326,13 +360,86 @@ async function fetchTaskById(projectId: string, taskId: string): Promise<Task> {
   return task;
 }
 
+export class SupabaseTenantRepository implements TenantRepository {
+  async listTenants(userId: string): Promise<Tenant[]> {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('tenant_members')
+        .select('role,tenant:tenants!inner(id,name,slug,archived_at)')
+        .eq('user_id', userId)
+        .is('tenant.archived_at', null),
+      15000,
+      'listTenants'
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    const rows = (data as TenantMemberJoinedRow[] | null) ?? [];
+
+    return rows
+      .map((row) => {
+        const tenant = unwrapOne(row.tenant);
+        return tenant ? mapTenant(tenant, row.role) : null;
+      })
+      .filter((tenant): tenant is Tenant => Boolean(tenant))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async createTenantWithOwner(name: string, preferredSlug?: string): Promise<Tenant> {
+    const { data, error } = await withTimeout(
+      supabase.rpc('create_tenant_with_owner', {
+        p_name: name,
+        p_slug: preferredSlug ?? null,
+      }),
+      15000,
+      'createTenantWithOwner'
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    const row = requireData(data as TenantRow | null, 'create_tenant_with_owner returned no data');
+    return mapTenant(row, 'owner');
+  }
+}
+
 export class SupabaseProjectRepository implements ProjectRepository {
-  async listProjects(userId: string): Promise<Project[]> {
-    const { data, error } = await supabase
-      .from('project_members')
-      .select('role,project:projects!inner(id,name,description,created_by,created_at,archived_at)')
-      .eq('user_id', userId)
-      .is('project.archived_at', null);
+  async listProjects(userId: string, tenantSlug: string): Promise<Project[]> {
+    const { data: membershipData, error: membershipError } = await withTimeout(
+      supabase
+        .from('tenant_members')
+        .select('role,tenant:tenants!inner(id,name,slug,archived_at)')
+        .eq('user_id', userId)
+        .eq('tenant.slug', tenantSlug)
+        .is('tenant.archived_at', null)
+        .maybeSingle(),
+      15000,
+      'listProjects.membershipLookup'
+    );
+
+    if (membershipError) {
+      throw membershipError;
+    }
+
+    const tenantMembership = membershipData as TenantMemberJoinedRow | null;
+    const tenant = unwrapOne(tenantMembership?.tenant);
+    if (!tenant) {
+      return [];
+    }
+
+    const { data, error } = await withTimeout(
+      supabase
+        .from('project_members')
+        .select('role,project:projects!inner(id,tenant_id,name,description,created_by,created_at,archived_at)')
+        .eq('user_id', userId)
+        .eq('project.tenant_id', tenant.id)
+        .is('project.archived_at', null),
+      15000,
+      'listProjects.projectLookup'
+    );
 
     if (error) {
       throw error;
@@ -349,7 +456,7 @@ export class SupabaseProjectRepository implements ProjectRepository {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
-  async createProjectWithDefaults(input: CreateProjectInput): Promise<Project> {
+  async createProjectWithDefaults(tenantSlug: string, input: CreateProjectInput): Promise<Project> {
     const { data: userResult, error: userError } = await supabase.auth.getUser();
     if (userError) {
       throw userError;
@@ -360,17 +467,22 @@ export class SupabaseProjectRepository implements ProjectRepository {
       throw new Error('Not authenticated');
     }
 
-    const { data, error } = await supabase.rpc('create_project_with_defaults', {
-      p_name: input.name,
-      p_description: input.description ?? null,
-    });
+    const { data, error } = await withTimeout(
+      supabase.rpc('create_project_with_defaults', {
+        p_tenant_slug: tenantSlug,
+        p_name: input.name,
+        p_description: input.description ?? null,
+      }),
+      15000,
+      'createProjectWithDefaults'
+    );
 
     if (error) {
       throw error;
     }
 
     const projectId = requireData(data as string | null, 'create_project_with_defaults returned no id');
-    const projects = await this.listProjects(userId);
+    const projects = await this.listProjects(userId, tenantSlug);
     const project = projects.find((item) => item.id === projectId);
 
     if (!project) {
@@ -422,7 +534,7 @@ export class SupabaseProjectRepository implements ProjectRepository {
         description: input.description ?? null,
       })
       .eq('id', projectId)
-      .select('id,name,description,created_by,created_at,archived_at')
+      .select('id,tenant_id,name,description,created_by,created_at,archived_at')
       .single();
 
     if (error) {
@@ -701,6 +813,7 @@ export class SupabaseDashboardRepository implements DashboardRepository {
   }
 }
 
+export const tenantRepository = new SupabaseTenantRepository();
 export const projectRepository = new SupabaseProjectRepository();
 export const taskRepository = new SupabaseTaskRepository();
 export const dashboardRepository = new SupabaseDashboardRepository();

@@ -110,6 +110,20 @@
     transition: background-color 250ms ease, color 250ms ease;
   }
 
+  /* Keep native date-picker icon inside the field on narrow layouts */
+  input[type='date'] {
+    min-width: 0;
+    padding-right: 2.25rem;
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator {
+    margin: 0;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    opacity: 0.9;
+    transform: translateX(1px);
+  }
+
   /* Smooth transitions for theme switching */
   * {
     transition-property: background-color, border-color, color, fill, stroke;

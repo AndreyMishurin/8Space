@@ -1,4 +1,5 @@
 export type ProjectRole = 'owner' | 'editor' | 'viewer';
+export type TenantRole = 'owner' | 'admin' | 'member';
 export type TaskPriority = 'p0' | 'p1' | 'p2';
 export type WorkflowColumnKind = 'backlog' | 'todo' | 'in_progress' | 'done' | 'custom';
 export type DependencyType = 'FS';
@@ -11,12 +12,20 @@ export interface UserProfile {
 
 export interface Project {
   id: string;
+  tenantId: string;
   name: string;
   description?: string | null;
   createdBy: string;
   createdAt: string;
   archivedAt?: string | null;
   role: ProjectRole;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  role: TenantRole;
 }
 
 export interface ProjectMember {

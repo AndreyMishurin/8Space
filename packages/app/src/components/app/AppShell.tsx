@@ -3,11 +3,14 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from 'reac
 import { FolderKanban, LayoutDashboard, LogOut, Plus, Settings, TableProperties, TimerReset, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { ErrorScreen } from '@/components/ErrorScreen';
 import { useAuth } from '@/hooks/use-auth';
-import { useCreateProject, useProject, useProjects } from '@/hooks/use-project-data';
+import { useCreateProject, useProject, useProjects, useTenants } from '@/hooks/use-project-data';
 import { cn } from '@/lib/utils';
 import { isSupabaseConfigured } from '@/integrations/supabase/client';
+import { getErrorMessage } from '@/lib/errors';
 
 const projectTabs = [
   { slug: 'backlog', label: 'Backlog', icon: TableProperties },
@@ -17,20 +20,27 @@ const projectTabs = [
   { slug: 'settings', label: 'Project settings', icon: Settings },
 ] as const;
 
-export function AppShell() {
+export function AppShell({ tenantSlug }: { tenantSlug: string }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { projectId } = useParams();
   const { profile, signOut } = useAuth();
-  const projectsQuery = useProjects();
-  const createProject = useCreateProject();
-  const currentProject = useProject(projectId);
+  const tenantsQuery = useTenants();
+  const projectsQuery = useProjects(tenantSlug);
+  const createProject = useCreateProject(tenantSlug);
+  const currentProject = useProject(projectId, tenantSlug);
 
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
 
+  const tenants = useMemo(() => tenantsQuery.data ?? [], [tenantsQuery.data]);
   const projects = useMemo(() => projectsQuery.data ?? [], [projectsQuery.data]);
+
+  useEffect(() => {
+    window.localStorage.setItem('8space:last-tenant-slug', tenantSlug);
+  }, [tenantSlug]);
 
   useEffect(() => {
     if (projectsQuery.isLoading) {
@@ -42,14 +52,14 @@ export function AppShell() {
     }
 
     if (!projectId || !projects.some((project) => project.id === projectId)) {
-      navigate(`/projects/${projects[0].id}/backlog`, { replace: true });
+      navigate(`/t/${tenantSlug}/projects/${projects[0].id}/backlog`, { replace: true });
       return;
     }
 
-    if (location.pathname === `/projects/${projectId}`) {
-      navigate(`/projects/${projectId}/backlog`, { replace: true });
+    if (location.pathname === `/t/${tenantSlug}/projects/${projectId}`) {
+      navigate(`/t/${tenantSlug}/projects/${projectId}/backlog`, { replace: true });
     }
-  }, [location.pathname, navigate, projectId, projects, projectsQuery.isLoading]);
+  }, [location.pathname, navigate, projectId, projects, projectsQuery.isLoading, tenantSlug]);
 
   const canCreateProject = projectName.trim().length > 0 && !createProject.isPending;
 
@@ -61,16 +71,19 @@ export function AppShell() {
         if (!canCreateProject) {
           return;
         }
-
-        const project = await createProject.mutateAsync({
-          name: projectName.trim(),
-          description: projectDescription.trim() || undefined,
-        });
-
-        setProjectName('');
-        setProjectDescription('');
-        setIsCreatingProject(false);
-        navigate(`/projects/${project.id}/backlog`);
+        setCreateError(null);
+        try {
+          const project = await createProject.mutateAsync({
+            name: projectName.trim(),
+            description: projectDescription.trim() || undefined,
+          });
+          setProjectName('');
+          setProjectDescription('');
+          setIsCreatingProject(false);
+          navigate(`/t/${tenantSlug}/projects/${project.id}/backlog`);
+        } catch (err) {
+          setCreateError(err instanceof Error ? err.message : 'Failed to create project');
+        }
       }}
     >
       <Input
@@ -84,8 +97,11 @@ export function AppShell() {
         onChange={(event) => setProjectDescription(event.target.value)}
         placeholder="Project description"
       />
+      {createError && (
+        <p className="text-sm text-destructive">{createError}</p>
+      )}
       <div className="flex items-center justify-end gap-2">
-        <Button variant="ghost" size="sm" type="button" onClick={() => setIsCreatingProject(false)}>
+        <Button variant="ghost" size="sm" type="button" onClick={() => { setIsCreatingProject(false); setCreateError(null); }}>
           Cancel
         </Button>
         <Button size="sm" type="submit" disabled={!canCreateProject}>
@@ -104,9 +120,26 @@ export function AppShell() {
 
   if (projectsQuery.isLoading) {
     return (
-      <div className="h-screen bg-background text-foreground grid place-items-center">
+      <div className="h-screen bg-background text-foreground grid place-items-center gap-4">
+        <Spinner variant="infinite" size={40} />
         <p className="text-sm text-muted-foreground">Loading workspace…</p>
       </div>
+    );
+  }
+
+  if (projectsQuery.isError) {
+    return (
+      <ErrorScreen
+        code={500}
+        title="Workspace is unavailable"
+        message={getErrorMessage(projectsQuery.error)}
+        onRetry={() => projectsQuery.refetch()}
+        extraActions={
+          <Button variant="outline" onClick={async () => { await signOut(); navigate('/', { replace: true }); }}>
+            Sign out
+          </Button>
+        }
+      />
     );
   }
 
@@ -141,16 +174,35 @@ export function AppShell() {
     <div className="flex h-screen bg-background text-foreground">
       <aside className="w-72 bg-card border-r border-border flex flex-col">
         <div className="h-16 px-4 border-b border-border flex items-center justify-between shrink-0">
-          <Link to="/" className="font-semibold text-lg tracking-tight">
+          <Link to={`/t/${tenantSlug}/projects`} className="font-semibold text-lg tracking-tight">
             8Space
           </Link>
           <ThemeToggle />
         </div>
 
+        <div className="px-4 py-3 border-b border-border space-y-2">
+          <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Workspace</h3>
+          <div className="space-y-1">
+            {tenants.map((tenant) => (
+              <button
+                key={tenant.id}
+                className={cn(
+                  'w-full px-3 py-2 rounded-md text-left text-sm transition-colors',
+                  tenant.slug === tenantSlug ? 'bg-secondary text-secondary-foreground' : 'hover:bg-muted'
+                )}
+                onClick={() => navigate(`/t/${tenant.slug}/projects`)}
+              >
+                <p className="font-medium truncate">{tenant.name}</p>
+                <p className="text-xs text-muted-foreground">{tenant.slug}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="p-4 border-b border-border space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Projects</h3>
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => setIsCreatingProject((v) => !v)}>
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => { setIsCreatingProject((v) => !v); setCreateError(null); }}>
               <Plus className="size-4" />
             </Button>
           </div>
@@ -163,7 +215,7 @@ export function AppShell() {
                   'w-full px-3 py-2 rounded-md text-left text-sm transition-colors',
                   project.id === projectId ? 'bg-secondary text-secondary-foreground' : 'hover:bg-muted'
                 )}
-                onClick={() => navigate(`/projects/${project.id}/backlog`)}
+                onClick={() => navigate(`/t/${tenantSlug}/projects/${project.id}/backlog`)}
               >
                 <p className="font-medium truncate">{project.name}</p>
                 <p className="text-xs text-muted-foreground capitalize">{project.role}</p>
@@ -202,7 +254,7 @@ export function AppShell() {
               return (
                 <NavLink
                   key={tab.slug}
-                  to={`/projects/${projectId}/${tab.slug}`}
+                  to={`/t/${tenantSlug}/projects/${projectId}/${tab.slug}`}
                   className={({ isActive }) =>
                     cn(
                       'px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors',

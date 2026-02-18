@@ -7,13 +7,19 @@ import type {
   ProjectMetrics,
   Task,
   TaskDependency,
+  Tenant,
   UpdateTaskInlineInput,
   WorkflowColumn,
 } from '@/domain/types';
 
+export interface TenantRepository {
+  listTenants(userId: string): Promise<Tenant[]>;
+  createTenantWithOwner(name: string, preferredSlug?: string): Promise<Tenant>;
+}
+
 export interface ProjectRepository {
-  listProjects(userId: string): Promise<Project[]>;
-  createProjectWithDefaults(input: CreateProjectInput): Promise<Project>;
+  listProjects(userId: string, tenantSlug: string): Promise<Project[]>;
+  createProjectWithDefaults(tenantSlug: string, input: CreateProjectInput): Promise<Project>;
   getProjectMembers(projectId: string): Promise<ProjectMember[]>;
   listWorkflowColumns(projectId: string): Promise<WorkflowColumn[]>;
   updateProjectSettings(projectId: string, input: Pick<Project, 'name' | 'description'>): Promise<Project>;

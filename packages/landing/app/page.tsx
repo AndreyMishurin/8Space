@@ -5,6 +5,7 @@ import { createClient } from "@/libs/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { BackgroundPaths } from "@/components/ui/background-paths";
 import HeaderNav from "@/components/HeaderNav";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 
 export default function Page() {
@@ -68,6 +69,8 @@ export default function Page() {
         ctaText={user ? "Open App" : "Get Started"}
         onCtaClick={handleGetStarted}
       />
+
+      <Footer />
     </>
   );
 }

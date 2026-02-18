@@ -11,16 +11,19 @@ import {
   useTasks,
   useWorkflowColumns,
 } from '@/hooks/use-project-data';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
+import { ErrorScreen } from '@/components/ErrorScreen';
 import { isTaskOverdue, nextOrderRankInColumn, sortTasksByRank } from '@/utils/tasks';
 
 interface BoardViewProps {
+  tenantSlug: string;
   projectId: string;
 }
 
-export function BoardView({ projectId }: BoardViewProps) {
-  const project = useProject(projectId);
+export function BoardView({ tenantSlug, projectId }: BoardViewProps) {
+  const project = useProject(projectId, tenantSlug);
   const columnsQuery = useWorkflowColumns(projectId);
   const tasksQuery = useTasks(projectId);
 
@@ -58,6 +61,28 @@ export function BoardView({ projectId }: BoardViewProps) {
   }, [columns, tasks]);
 
   const canEdit = project ? project.role !== 'viewer' : false;
+
+  if (columnsQuery.isLoading || tasksQuery.isLoading) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 p-6">
+        <Spinner variant="infinite" size={40} />
+        <p className="text-sm text-muted-foreground">Loading board…</p>
+      </div>
+    );
+  }
+
+  const failingQuery = columnsQuery.isError ? columnsQuery : tasksQuery.isError ? tasksQuery : null;
+  if (failingQuery) {
+    return (
+      <ErrorScreen
+        variant="inline"
+        code={500}
+        message={getErrorMessage(failingQuery.error)}
+        onRetry={() => failingQuery.refetch()}
+        showGoHome={false}
+      />
+    );
+  }
 
   return (
     <div className="h-full p-6 overflow-auto">

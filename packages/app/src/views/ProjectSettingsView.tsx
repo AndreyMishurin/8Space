@@ -2,17 +2,21 @@ import { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useProject, useProjectMembers, useUpdateProjectSettings, useWorkflowColumns } from '@/hooks/use-project-data';
+import { useProject, useProjectMembers, useProjects, useUpdateProjectSettings, useWorkflowColumns } from '@/hooks/use-project-data';
+import { ErrorScreen } from '@/components/ErrorScreen';
+import { getErrorMessage } from '@/lib/errors';
 
 interface ProjectSettingsViewProps {
+  tenantSlug: string;
   projectId: string;
 }
 
-export function ProjectSettingsView({ projectId }: ProjectSettingsViewProps) {
-  const project = useProject(projectId);
+export function ProjectSettingsView({ tenantSlug, projectId }: ProjectSettingsViewProps) {
+  const project = useProject(projectId, tenantSlug);
+  const projectsQuery = useProjects(tenantSlug);
   const columnsQuery = useWorkflowColumns(projectId);
   const membersQuery = useProjectMembers(projectId);
-  const updateSettings = useUpdateProjectSettings(projectId);
+  const updateSettings = useUpdateProjectSettings(projectId, tenantSlug);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -25,6 +29,19 @@ export function ProjectSettingsView({ projectId }: ProjectSettingsViewProps) {
     setName(project.name);
     setDescription(project.description ?? '');
   }, [project]);
+
+  if (projectsQuery.isError || columnsQuery.isError) {
+    const q = projectsQuery.isError ? projectsQuery : columnsQuery;
+    return (
+      <ErrorScreen
+        variant="inline"
+        code={500}
+        message={getErrorMessage(q.error)}
+        onRetry={() => q.refetch()}
+        showGoHome={false}
+      />
+    );
+  }
 
   if (!project) {
     return null;

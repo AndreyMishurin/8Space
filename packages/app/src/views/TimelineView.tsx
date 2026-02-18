@@ -19,11 +19,15 @@ import {
   useTasks,
   useUpdateTaskInline,
 } from '@/hooks/use-project-data';
+import { Spinner } from '@/components/ui/spinner';
 import { sortTasksByRank, taskDisplayEnd, taskDisplayStart } from '@/utils/tasks';
 import type { Task } from '@/domain/types';
 import { cn } from '@/lib/utils';
+import { ErrorScreen } from '@/components/ErrorScreen';
+import { getErrorMessage } from '@/lib/errors';
 
 interface TimelineViewProps {
+  tenantSlug: string;
   projectId: string;
 }
 
@@ -49,8 +53,8 @@ interface DisplayTask {
 
 const ROW_HEIGHT = 48;
 
-export function TimelineView({ projectId }: TimelineViewProps) {
-  const project = useProject(projectId);
+export function TimelineView({ tenantSlug, projectId }: TimelineViewProps) {
+  const project = useProject(projectId, tenantSlug);
   const tasksQuery = useTasks(projectId);
   const dependenciesQuery = useTaskDependencies(projectId);
 
@@ -267,6 +271,27 @@ export function TimelineView({ projectId }: TimelineViewProps) {
 
     return chunks;
   }, [cellWidth, dates]);
+
+  if (tasksQuery.isLoading || dependenciesQuery.isLoading) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 p-6">
+        <Spinner variant="infinite" size={40} />
+        <p className="text-sm text-muted-foreground">Loading timeline…</p>
+      </div>
+    );
+  }
+
+  if (tasksQuery.isError) {
+    return (
+      <ErrorScreen
+        variant="inline"
+        code={500}
+        message={getErrorMessage(tasksQuery.error)}
+        onRetry={() => tasksQuery.refetch()}
+        showGoHome={false}
+      />
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">

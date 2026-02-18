@@ -3,6 +3,9 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
+const ACTIVE_PATH_STROKE = "#fa7313";
+// const ACTIVE_PATH_STROKE = "currentColor"; // previous gray/white lines
+
 function FloatingPaths({ position }: { position: number }) {
   const paths = Array.from({ length: 36 }, (_, i) => ({
     id: i,
@@ -29,7 +32,7 @@ function FloatingPaths({ position }: { position: number }) {
           <motion.path
             key={path.id}
             d={path.d}
-            stroke="currentColor"
+            stroke={ACTIVE_PATH_STROKE}
             strokeWidth={path.width}
             strokeOpacity={0.1 + path.id * 0.03}
             initial={{ pathLength: 0.3, opacity: 0.6 }}

@@ -120,9 +120,31 @@ values
   ('33333333-3333-3333-3333-333333333333', 'Vera Viewer')
 on conflict (id) do update set display_name = excluded.display_name;
 
-insert into public.projects (id, name, description, created_by)
+insert into public.tenants (id, name, slug, created_by)
+values (
+  '88888888-8888-8888-8888-888888888888',
+  '8Space Demo',
+  'demo-space',
+  '11111111-1111-1111-1111-111111111111'
+)
+on conflict (id) do update
+set
+  name = excluded.name,
+  slug = excluded.slug,
+  created_by = excluded.created_by;
+
+insert into public.tenant_members (tenant_id, user_id, role)
+values
+  ('88888888-8888-8888-8888-888888888888', '11111111-1111-1111-1111-111111111111', 'owner'),
+  ('88888888-8888-8888-8888-888888888888', '22222222-2222-2222-2222-222222222222', 'admin'),
+  ('88888888-8888-8888-8888-888888888888', '33333333-3333-3333-3333-333333333333', 'member')
+on conflict (tenant_id, user_id) do update
+set role = excluded.role;
+
+insert into public.projects (id, tenant_id, name, description, created_by)
 values (
   '44444444-4444-4444-4444-444444444444',
+  '88888888-8888-8888-8888-888888888888',
   'Product Launch Q2',
   'Demo project seeded for local MVP environment',
   '11111111-1111-1111-1111-111111111111'

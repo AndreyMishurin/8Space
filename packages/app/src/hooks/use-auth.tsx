@@ -16,6 +16,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const SESSION_BOOTSTRAP_TIMEOUT_MS = 15000;
 
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
@@ -47,35 +48,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-
-    const bootstrap = async () => {
-      const { data, error } = await supabase.auth.getSession();
-
-      if (error) {
-        console.error('Failed to restore session', error);
-      }
-
+    let bootstrapTimedOut = false;
+    const loadingFallbackTimer = window.setTimeout(() => {
       if (!active) {
         return;
       }
-
-      const restoredSession = data.session;
-      setSession(restoredSession);
-      setUser(restoredSession?.user ?? null);
-
-      if (restoredSession?.user?.id) {
-        try {
-          const profileData = await fetchProfile(restoredSession.user.id);
-          if (active) {
-            setProfile(profileData);
+      bootstrapTimedOut = true;
+      console.warn('Auth bootstrap timed out, clearing stale local session and continuing.');
+      void supabase.auth
+        .signOut({ scope: 'local' })
+        .catch((signOutError) => {
+          console.error('Failed to clear stale local session', signOutError);
+        })
+        .finally(() => {
+          if (!active) {
+            return;
           }
-        } catch (profileError) {
-          console.error('Failed to load profile', profileError);
-        }
-      }
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        });
+    }, SESSION_BOOTSTRAP_TIMEOUT_MS);
 
-      if (active) {
-        setLoading(false);
+    const bootstrap = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Failed to restore session', error);
+        }
+
+        if (!active || bootstrapTimedOut) {
+          return;
+        }
+
+        const restoredSession = data.session;
+        setSession(restoredSession);
+        setUser(restoredSession?.user ?? null);
+
+        if (restoredSession?.user?.id) {
+          try {
+            const profileData = await fetchProfile(restoredSession.user.id);
+            if (active && !bootstrapTimedOut) {
+              setProfile(profileData);
+            }
+          } catch (profileError) {
+            console.error('Failed to load profile', profileError);
+          }
+        }
+      } catch (bootstrapError) {
+        console.error('Failed to bootstrap auth session', bootstrapError);
+        if (active) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+        }
+      } finally {
+        window.clearTimeout(loadingFallbackTimer);
+        if (active && !bootstrapTimedOut) {
+          setLoading(false);
+        }
       }
     };
 
@@ -102,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       active = false;
+      window.clearTimeout(loadingFallbackTimer);
       authSubscription.data.subscription.unsubscribe();
     };
   }, []);
@@ -134,10 +168,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       signInWithGoogle: async () => {
+        const callbackUrl = new URL(`${import.meta.env.BASE_URL}auth/callback`, window.location.origin).toString();
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
+            redirectTo: callbackUrl,
           },
         });
         if (error) {
@@ -147,7 +182,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         const { error } = await supabase.auth.signOut();
         if (error) {
-          throw error;
+          const { error: localError } = await supabase.auth.signOut({ scope: 'local' });
+          if (localError) {
+            throw localError;
+          }
         }
       },
     }),
