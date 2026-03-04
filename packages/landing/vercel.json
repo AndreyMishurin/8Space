@@ -1,4 +1,4 @@
 {
-  "installCommand": "cd ../.. && npm install",
+  "installCommand": "cd ../.. && npm install --force",
   "buildCommand": "cd ../.. && npm run vercel-build"
 }
