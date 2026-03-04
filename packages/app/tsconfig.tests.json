@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": ".tmp-tests",
+    "rootDir": ".",
+    "strict": true,
+    "noEmitOnError": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src/hooks/session-utils.ts", "tests/**/*.ts"]
+}

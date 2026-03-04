@@ -1,8 +1,6 @@
 {
-  "rewrites": [
-    {
-      "source": "/app/:path*",
-      "destination": "/app/index.html"
-    }
-  ]
+  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm install",
+  "outputDirectory": "packages/landing/.next",
+  "framework": "nextjs"
 }

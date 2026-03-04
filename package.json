@@ -11,6 +11,8 @@
     "dev:app": "npm run dev -w packages/app",
     "dev:swagger": "python3 -m http.server 55027 --bind 127.0.0.1 --directory docs/api",
     "build:landing": "npm run build -w packages/landing",
-    "build:app": "npm run build -w packages/app"
+    "build:app": "npm run build -w packages/app",
+    "build": "npm run build:app && cp -r packages/app/dist/. packages/landing/public/app && npm run build:landing",
+    "vercel-build": "npm run build:app && cp -r packages/app/dist/. packages/landing/public/app && npm run build:landing"
   }
 }

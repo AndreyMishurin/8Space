@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/libs/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import config from "@/config";
 
 // A simple button to sign in with Google via Supabase Auth.
 // After login, user is redirected to /app (8Space SPA).
@@ -37,10 +38,12 @@ const ButtonSignin = ({
 
   const handleSignIn = async () => {
     const supabase = createClient();
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    callbackUrl.searchParams.set("next", config.auth.callbackUrl);
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     });
   };

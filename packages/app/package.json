@@ -1,12 +1,13 @@
 {
   "name": "8space",
   "private": false,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "tsc -p tsconfig.tests.json && node --test .tmp-tests/tests/*.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -33,7 +34,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@rollup/rollup-darwin-x64": "^4.53.3",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",

@@ -33,6 +33,23 @@ cd ../..
 - `packages/app/supabase/migrations/`
 - `packages/app/supabase/seed.sql`
 
+#### Google OAuth (опционально, для кнопки Continue with Google)
+
+Создайте `packages/app/supabase/.env` на основе `packages/app/supabase/.env.example`:
+
+```bash
+cp packages/app/supabase/.env.example packages/app/supabase/.env
+```
+
+Заполните `GOOGLE_CLIENT_ID` и `GOOGLE_CLIENT_SECRET`, затем перезапустите Supabase:
+
+```bash
+cd packages/app
+supabase stop
+supabase start
+cd ../..
+```
+
 ### 3. Переменные окружения
 
 Минимум для app:
@@ -40,6 +57,8 @@ cd ../..
 ```bash
 VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_ANON_KEY=<anon key>
+# Optional: OAuth callback origin for Google sign-in from app auth screen
+VITE_AUTH_CALLBACK_ORIGIN=http://localhost:3000
 ```
 
 Для landing добавьте `NEXT_PUBLIC_SUPABASE_URL` и `NEXT_PUBLIC_SUPABASE_ANON_KEY` (и, при необходимости, Stripe/Resend переменные).

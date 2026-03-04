@@ -27,17 +27,7 @@ export default function Page() {
   }, []);
 
   const handleGetStarted = () => {
-    if (user) {
-      window.location.href = "/app";
-      return;
-    }
-    const supabase = createClient();
-    supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    window.location.href = "/app";
   };
 
   const extraRight = user ? (

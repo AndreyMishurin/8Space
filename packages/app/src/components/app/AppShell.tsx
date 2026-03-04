@@ -11,6 +11,7 @@ import { useCreateProject, useProject, useProjects, useTenants } from '@/hooks/u
 import { cn } from '@/lib/utils';
 import { isSupabaseConfigured } from '@/integrations/supabase/client';
 import { getErrorMessage } from '@/lib/errors';
+import { buildInfo } from '@/lib/build-info';
 
 const projectTabs = [
   { slug: 'backlog', label: 'Backlog', icon: TableProperties },
@@ -239,6 +240,9 @@ export function AppShell({ tenantSlug }: { tenantSlug: string }) {
             <LogOut className="size-4" />
             Sign out
           </Button>
+          <div className="text-[11px] text-muted-foreground" title={`Build v${buildInfo.version}`}>
+            Build v{buildInfo.version}
+          </div>
         </div>
       </aside>
 

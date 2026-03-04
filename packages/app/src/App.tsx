@@ -3,6 +3,8 @@ import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthView } from '@/components/auth/AuthView';
 import { AppShell } from '@/components/app/AppShell';
 import { Spinner } from '@/components/ui/spinner';
+import { Button } from '@/components/ui/button';
+import { ErrorScreen } from '@/components/ErrorScreen';
 import { useAuth } from '@/hooks/use-auth';
 import { useTenants } from '@/hooks/use-project-data';
 import { BacklogView } from '@/views/BacklogView';
@@ -121,10 +123,32 @@ function RequireProjectId({
 }
 
 export default function App() {
-  const { loading, user } = useAuth();
+  const { bootstrapError, loading, recovering, retryBootstrap, signOut, user } = useAuth();
 
   if (loading) {
-    return <LoadingState text="Restoring session…" />;
+    return <LoadingState text={recovering ? 'Restoring connection…' : 'Restoring session…'} />;
+  }
+
+  if (!user && bootstrapError) {
+    return (
+      <ErrorScreen
+        code={500}
+        title="Session recovery failed"
+        message={bootstrapError}
+        onRetry={retryBootstrap}
+        showGoHome={false}
+        extraActions={
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await signOut();
+            }}
+          >
+            Sign out
+          </Button>
+        }
+      />
+    );
   }
 
   if (!user) {

@@ -1,7 +1,11 @@
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/libs/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/app")) {
+    return NextResponse.next({ request });
+  }
+
   return await updateSession(request);
 }
 
