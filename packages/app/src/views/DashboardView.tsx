@@ -1,10 +1,20 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, CalendarCheck2, ChartNoAxesColumn, CheckCheck, Gauge, Users } from 'lucide-react';
+import {
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  format,
+  parseISO,
+  isBefore,
+  isAfter,
+} from 'date-fns';
+import { AlertTriangle, CalendarCheck2, CheckCheck, Gauge, TrendingDown, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useDashboardMetrics } from '@/hooks/use-dashboard-metrics';
 import { ErrorScreen } from '@/components/ErrorScreen';
 import { getErrorMessage } from '@/lib/errors';
+import { BurndownChart, type BurndownPoint } from '@/components/charts/BurndownChart';
 
 interface DashboardViewProps {
   tenantSlug: string;
@@ -31,9 +41,44 @@ function MetricCard({ title, value, icon: Icon, hint }: MetricCardProps) {
   );
 }
 
+const MONTH_DAYS = 31;
+
+function buildBurndownData(
+  completionTrend: { date: string; doneCount: number }[],
+  totalScope: number,
+  monthStart: Date,
+  monthEnd: Date
+): BurndownPoint[] {
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const trendByDate = new Map<string, number>();
+  for (const p of completionTrend) {
+    trendByDate.set(p.date, p.doneCount);
+  }
+
+  const numDays = days.length;
+  let cumulativeDone = 0;
+
+  return days.map((day, index) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const doneThisDay = trendByDate.get(dateStr) ?? 0;
+    cumulativeDone += doneThisDay;
+    const actual = Math.max(0, totalScope - cumulativeDone);
+    const planned =
+      numDays <= 1 ? totalScope : totalScope * (1 - index / (numDays - 1));
+
+    return {
+      date: dateStr,
+      dayLabel: format(day, 'MM-dd'),
+      planned: Math.round(planned * 10) / 10,
+      actual,
+    };
+  });
+}
+
 export function DashboardView({ tenantSlug: _tenantSlug, projectId }: DashboardViewProps) {
   const [daysWindow, setDaysWindow] = useState<7 | 14>(14);
   const metricsQuery = useDashboardMetrics(projectId, daysWindow);
+  const monthMetricsQuery = useDashboardMetrics(projectId, MONTH_DAYS);
 
   const metrics = metricsQuery.data;
 
@@ -48,7 +93,31 @@ export function DashboardView({ tenantSlug: _tenantSlug, projectId }: DashboardV
     ];
   }, [metrics]);
 
-  const maxTrend = Math.max(...(metrics?.completionTrend.map((point) => point.doneCount) ?? [1]));
+  const burndownData = useMemo((): BurndownPoint[] => {
+    const monthMetrics = monthMetricsQuery.data;
+    if (!monthMetrics) return [];
+
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+
+    const totalScope =
+      (monthMetrics.tasksByStatus.backlog ?? 0) +
+      (monthMetrics.tasksByStatus.todo ?? 0) +
+      (monthMetrics.tasksByStatus.in_progress ?? 0) +
+      (monthMetrics.tasksByStatus.done ?? 0);
+
+    const trendInMonth = (monthMetrics.completionTrend ?? []).filter((p) => {
+      try {
+        const d = parseISO(p.date);
+        return !isBefore(d, monthStart) && !isAfter(d, monthEnd);
+      } catch {
+        return false;
+      }
+    });
+
+    return buildBurndownData(trendInMonth, totalScope, monthStart, monthEnd);
+  }, [monthMetricsQuery.data]);
 
   if (metricsQuery.isLoading) {
     return (
@@ -120,27 +189,13 @@ export function DashboardView({ tenantSlug: _tenantSlug, projectId }: DashboardV
         <div className="xl:col-span-2 widget-container">
           <div className="p-4 border-b border-border flex items-center justify-between">
             <h3 className="text-sm font-semibold flex items-center gap-2">
-              <ChartNoAxesColumn className="size-4 text-accent-lime" />
-              Completion trend
+              <TrendingDown className="size-4 text-accent-lime" />
+              Burndown
             </h3>
-            <span className="text-xs text-muted-foreground">Done per day</span>
+            <span className="text-xs text-muted-foreground">Current month</span>
           </div>
-          <div className="p-4 space-y-3">
-            {(metrics?.completionTrend ?? []).map((point) => (
-              <div key={point.date} className="flex items-center gap-3">
-                <div className="w-24 text-xs text-muted-foreground">{point.date.slice(5)}</div>
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent-lime"
-                    style={{ width: `${Math.max((point.doneCount / maxTrend) * 100, point.doneCount > 0 ? 6 : 0)}%` }}
-                  />
-                </div>
-                <div className="w-10 text-right text-xs">{point.doneCount}</div>
-              </div>
-            ))}
-            {(metrics?.completionTrend ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground">No completed tasks in this window yet.</p>
-            )}
+          <div className="p-4">
+            <BurndownChart data={burndownData} />
           </div>
         </div>
 

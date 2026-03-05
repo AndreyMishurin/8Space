@@ -17,5 +17,8 @@
     "build:app": "npm run build -w packages/app",
     "build": "npm run build:app && cp -r packages/app/dist/. packages/landing/public/app && npm run build:landing",
     "vercel-build": "npm run build:app && cp -r packages/app/dist/. packages/landing/public/app && npm run build:landing"
+  },
+  "devDependencies": {
+    "shadcn": "^3.8.5"
   }
 }

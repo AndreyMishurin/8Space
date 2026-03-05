@@ -9,12 +9,11 @@ import {
   isWeekend,
   subDays,
 } from 'date-fns';
-import { ChevronRight, Zap } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import {
   useDeleteTask,
   useMoveTask,
   useProject,
-  useSetTaskDependencies,
   useTaskDependencies,
   useTasks,
   useUpdateTaskInline,
@@ -61,11 +60,8 @@ export function TimelineView({ tenantSlug, projectId }: TimelineViewProps) {
   const updateTask = useUpdateTaskInline(projectId);
   const moveTask = useMoveTask(projectId);
   const deleteTask = useDeleteTask(projectId);
-  const setTaskDependencies = useSetTaskDependencies(projectId);
-
   const [scale, setScale] = useState<Scale>('week');
   const [dragState, setDragState] = useState<DragState | null>(null);
-  const [dependencyEditorTaskId, setDependencyEditorTaskId] = useState<string>('');
 
   const tasks = useMemo(() => sortTasksByRank(tasksQuery.data ?? []), [tasksQuery.data]);
   const dependencies = useMemo(() => dependenciesQuery.data ?? [], [dependenciesQuery.data]);
@@ -562,52 +558,6 @@ export function TimelineView({ tenantSlug, projectId }: TimelineViewProps) {
         </div>
         </div>
       </div>
-
-      {/* Footer: Dependency editor */}
-      <footer className="flex-shrink-0 h-16 border-t border-border flex items-center justify-between px-6 bg-card">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-semibold">Dependency editor (FS)</span>
-          <div className="relative">
-            <select
-              className="appearance-none bg-muted border border-input text-foreground text-sm rounded-md pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer min-w-[200px]"
-              value={dependencyEditorTaskId}
-              onChange={(e) => setDependencyEditorTaskId(e.target.value)}
-            >
-              <option value="">Select successor task</option>
-              {displayTasks.map(({ task }) => (
-                <option key={task.id} value={task.id}>
-                  {task.title}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium py-1.5 px-4 rounded-md transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={!canEdit || !dependencyEditorTaskId}
-          onClick={() => {
-            if (!dependencyEditorTaskId) return;
-            const predecessorCandidates = displayTasks
-              .map((entry) => entry.task.id)
-              .filter((id) => id !== dependencyEditorTaskId)
-              .slice(0, 1);
-            setTaskDependencies.mutate({
-              successorTaskId: dependencyEditorTaskId,
-              predecessorTaskIds: predecessorCandidates,
-              type: 'FS',
-            });
-          }}
-        >
-          <Zap className="size-4" />
-          Set first available predecessor
-        </button>
-      </footer>
 
       {displayTasks.length === 0 && (
         <div className="text-sm text-muted-foreground border border-dashed border-border rounded-lg p-6">

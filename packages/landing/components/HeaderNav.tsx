@@ -62,13 +62,15 @@ export default function HeaderNav({
         </Link>
 
         <div className="flex items-center gap-4">
-          <button
-            type="button"
+          <a
+            href="https://docs.8space.app"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center text-sm font-medium text-white/90 hover:text-white transition-colors"
           >
             Documentation
             <ExternalLinkIcon />
-          </button>
+          </a>
 
           <a
             href="https://github.com/AndreyMishurin/8Space"

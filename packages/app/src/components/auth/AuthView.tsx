@@ -42,7 +42,7 @@ function normalizeAuthError(error: unknown, mode: AuthMode): FieldErrors {
   }
 
   if (message.includes('failed to fetch') || message.includes('network') || message.includes('timeout')) {
-    return { form: 'Cannot reach auth server. Make sure local Supabase is running.' };
+    return { form: 'Cannot reach auth server. Please check your connection and try again.' };
   }
 
   if (mode === 'signup' && (message.includes('422') || message.includes('unprocessable'))) {
@@ -60,8 +60,8 @@ export function AuthView() {
   const { signInWithPassword, signUpWithPassword, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('owner@gantt.local');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -108,11 +108,20 @@ export function AuthView() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
+    <div
+      className="min-h-screen text-foreground flex items-center justify-center p-6"
+      style={{
+        backgroundColor: '#0a0a0a',
+        backgroundImage: [
+          'radial-gradient(ellipse 120% 100% at 0% 100%, rgba(250, 115, 19, 0.5) 0%, rgba(250, 115, 19, 0.2) 38%, rgba(250, 115, 19, 0.06) 62%, transparent 82%)',
+          'linear-gradient(145deg, #0a0a0a 0%, transparent 50%, rgba(250, 115, 19, 0.03) 100%)',
+        ].join(', '),
+      }}
+    >
       <div className="w-full max-w-md border border-border rounded-xl bg-card p-6 shadow-lg space-y-6">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-semibold">8Space</h1>
-          <p className="text-sm text-muted-foreground">Sign in to your local Supabase workspace.</p>
+          <p className="text-sm text-muted-foreground">Enter your personal data to create account</p>
         </div>
 
         <Button
@@ -225,7 +234,7 @@ export function AuthView() {
                   return rest;
                 });
               }}
-              placeholder="owner@gantt.local"
+              placeholder="you@example.com"
               required
               className={errors.email ? 'border-destructive focus-visible:ring-destructive' : undefined}
               aria-invalid={Boolean(errors.email)}
@@ -250,7 +259,7 @@ export function AuthView() {
                   return rest;
                 });
               }}
-              placeholder="password123"
+              placeholder="••••••••"
               required
               className={errors.password ? 'border-destructive focus-visible:ring-destructive' : undefined}
               aria-invalid={Boolean(errors.password)}
@@ -270,9 +279,6 @@ export function AuthView() {
           </Button>
         </form>
 
-        <div className="text-xs text-muted-foreground border-t border-border pt-4">
-          Demo users from seed: `owner@gantt.local`, `editor@gantt.local`, `viewer@gantt.local` with password `password123`.
-        </div>
       </div>
     </div>
   );
