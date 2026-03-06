@@ -32,12 +32,16 @@ export const getSEOTags = ({
       siteName: openGraph?.title || config.appName,
       locale: "en_US",
       type: "website",
+      images: openGraph?.images ?? [
+        { url: "/og.png?v=2", width: 1200, height: 630, alt: config.appName },
+      ],
     },
 
     twitter: {
       title: openGraph?.title || config.appName,
       description: openGraph?.description || config.appDescription,
       card: "summary_large_image",
+      images: openGraph?.images ?? ["/og.png?v=2"],
     },
 
     ...(canonicalUrlRelative && {
