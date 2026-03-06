@@ -61,7 +61,7 @@ VITE_SUPABASE_ANON_KEY=<anon key>
 VITE_AUTH_CALLBACK_ORIGIN=http://localhost:3000
 ```
 
-Для landing добавьте `NEXT_PUBLIC_SUPABASE_URL` и `NEXT_PUBLIC_SUPABASE_ANON_KEY` (и, при необходимости, Stripe/Resend переменные).
+Для landing добавьте `NEXT_PUBLIC_SUPABASE_URL` и `NEXT_PUBLIC_SUPABASE_ANON_KEY` (и при необходимости переменные для Resend и др.).
 
 ### 4. Единый dev-стенд
 

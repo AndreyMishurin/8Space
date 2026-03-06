@@ -43,7 +43,7 @@ By accessing or using the Website, you agree to the terms of this Privacy Policy
 
 We collect the following types of information:
 
-a. Personal Information: When you sign in with Google, we receive your name, email address, and profile picture. We may also collect payment information if you subscribe to a paid plan.
+a. Personal Information: When you sign in with Google, we receive your name, email address, and profile picture.
 
 b. Non-Personal Information: We automatically collect non-personal information such as browser type, device type, and usage analytics.
 
@@ -53,11 +53,9 @@ We use the collected information for:
 - Providing and maintaining our services
 - Improving user experience
 - Sending relevant communications (with your consent)
-- Processing payments
-
 3. Data Sharing
 
-We do not sell or rent your personal information. We may share data with service providers (Supabase for authentication and database, Stripe for payments) strictly as needed to provide our services.
+We do not sell or rent your personal information. We may share data with service providers (e.g. Supabase for authentication and database) strictly as needed to provide our services.
 
 4. Children's Privacy
 
