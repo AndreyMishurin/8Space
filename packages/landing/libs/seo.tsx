@@ -33,7 +33,7 @@ export const getSEOTags = ({
       locale: "en_US",
       type: "website",
       images: openGraph?.images ?? [
-        { url: "/og.png?v=2", width: 1200, height: 630, alt: config.appName },
+        { url: "/og.png?v=3", width: 1200, height: 630, alt: config.appName },
       ],
     },
 
@@ -41,7 +41,7 @@ export const getSEOTags = ({
       title: openGraph?.title || config.appName,
       description: openGraph?.description || config.appDescription,
       card: "summary_large_image",
-      images: openGraph?.images ?? ["/og.png?v=2"],
+      images: openGraph?.images ?? ["/og.png?v=3"],
     },
 
     ...(canonicalUrlRelative && {
