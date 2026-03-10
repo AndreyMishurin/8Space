@@ -26,7 +26,19 @@
     --border: 214.3 31.8% 91.4%; /* Стандартный shadcn border для светлой темы */
     --input: 214.3 31.8% 91.4%;
     --ring: 240 10% 3.9%;
-    --radius: 0.5rem;
+    --radius: 0.625rem;
+
+    /* Sidebar (light: same as card) */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 240 10% 3.9%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-muted: 240 4.8% 95.9%;
+    --sidebar-muted-foreground: 240 3.8% 46.1%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 240 10% 3.9%;
 
     /* Accent colors - orange (brand #fa7313) */
     --accent-lime: 24 96% 53%; /* #fa7313 - основной цвет иконок/акцентов */
@@ -51,28 +63,40 @@
   }
 
   .dark {
-    /* Dark mode colors - черный фон как на скриншоте */
-    --background: 0 0% 0%; /* #000000 - черный фон */
-    --background-secondary: 0 0% 3.9%; /* #0a0a0a - почти черный для вторичных элементов */
-    --foreground: 0 0% 100%; /* #ffffff - белый текст */
-    --foreground-secondary: 0 0% 64.9%; /* #a6a6a6 - серый текст для вторичной информации */
-    --card: 0 0% 3.9%; /* #0a0a0a - черный фон карточек */
-    --card-foreground: 0 0% 100%; /* белый текст на карточках */
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 9.8%; /* #191919 - темно-серый для secondary */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 9.8%;
-    --muted-foreground: 0 0% 64.9%;
-    --accent: 0 0% 9.8%;
-    --accent-foreground: 0 0% 100%;
+    /* Dark mode - палитра как в архиве дизайна (oklch 0.1 / 0.13 / 0.12 / 0.18 / 0.22) */
+    --background: 0 0% 6%;
+    --background-secondary: 0 0% 5%;
+    --foreground: 0 0% 95%;
+    --foreground-secondary: 0 0% 65%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 6%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 95%;
     --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 14.9%; /* #262626 - темные границы */
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --destructive-foreground: 0 0% 95%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 0 0% 40%;
+
+    /* Sidebar - как в архиве */
+    --sidebar: 0 0% 7%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 0% 95%;
+    --sidebar-primary-foreground: 0 0% 6%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-muted: 240 3.7% 15.9%;
+    --sidebar-muted-foreground: 240 5% 64.9%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 0 0% 40%;
 
     /* Accent colors - orange in dark mode */
     --accent-lime: 24 96% 53%;
@@ -110,18 +134,19 @@
     transition: background-color 250ms ease, color 250ms ease;
   }
 
-  /* Keep native date-picker icon inside the field on narrow layouts */
+  /* Keep native date-picker icon fixed on the right side of the field */
   input[type='date'] {
     min-width: 0;
     padding-right: 2.25rem;
+    position: relative;
   }
 
   input[type='date']::-webkit-calendar-picker-indicator {
+    position: absolute;
+    right: 0.5rem;
     margin: 0;
-    margin-left: 0.5rem;
     cursor: pointer;
     opacity: 0.9;
-    transform: translateX(1px);
   }
 
   /* Smooth transitions for theme switching */
@@ -178,13 +203,11 @@
 
   /* Gantt chart - new design (orange accent, dark panel) */
   .gantt-task-bar {
-    transition: all 250ms ease;
-    will-change: transform, box-shadow;
+    transition: box-shadow 150ms ease, background-color 150ms ease;
   }
 
   .gantt-task-bar:hover {
-    box-shadow: 0 0 12px rgb(249 115 22 / 0.5);
-    transform: translateY(-1px);
+    box-shadow: 0 0 6px rgb(249 115 22 / 0.35);
   }
 
   .gantt-progress-fill {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -9,7 +9,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ListFilter, Plus, Trash2 } from 'lucide-react';
+import { Calendar, Check, Circle, GripVertical, ListFilter, Loader2, MoreVertical, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -76,6 +76,37 @@ function SortableTaskRow({
     id: task.id,
     disabled: !draggable,
   });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const currentStatusName = columnOptions.find((c) => c.id === task.statusColumnId)?.name ?? '';
+  const isDone = currentStatusName.toLowerCase().includes('done');
+  const isInProgress = currentStatusName.toLowerCase().includes('progress') || currentStatusName.toLowerCase().includes('process');
+  const statusIcon = isDone ? (
+    <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-green-500/20 text-green-400">
+      <Check className="size-2.5" />
+    </span>
+  ) : isInProgress ? (
+    <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <Loader2 className="size-2.5 animate-spin" />
+    </span>
+  ) : (
+    <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <Circle className="size-2.5" />
+    </span>
+  );
+  const statusTriggerClass = isDone
+    ? 'min-h-8 h-8 min-w-[5rem] gap-1.5 rounded-md border border-green-500/30 bg-green-500/20 text-green-400 px-2.5 py-1.5 whitespace-nowrap'
+    : 'min-h-8 h-8 min-w-[7.5rem] gap-1.5 rounded-md border border-border bg-muted text-muted-foreground px-2.5 py-1.5 whitespace-nowrap';
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [menuOpen]);
 
   return (
     <div
@@ -85,36 +116,49 @@ function SortableTaskRow({
         transition,
       }}
       className={cn(
-        'grid grid-cols-[minmax(280px,1.6fr)_160px_170px_130px_170px_56px] gap-3 items-center p-3 border-b border-border bg-card',
+        'grid grid-cols-[32px_32px_minmax(200px,1.6fr)_150px_150px_120px_140px_44px] items-center border-b border-border bg-background hover:bg-muted/20 transition-colors group',
         isDragging && 'opacity-70'
       )}
     >
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className={cn('cursor-grab text-muted-foreground', !draggable && 'opacity-30 cursor-not-allowed')}
-          {...attributes}
-          {...listeners}
-          disabled={!draggable}
-          title={draggable ? 'Drag to reorder' : 'Disable filters/grouping to reorder'}
-        >
-          ⋮⋮
-        </button>
+      {/* Drag handle */}
+      <button
+        type="button"
+        className={cn(
+          'flex items-center justify-center h-full text-muted-foreground/30 group-hover:text-muted-foreground transition-colors',
+          !draggable && 'opacity-20 cursor-not-allowed',
+          draggable && 'cursor-grab'
+        )}
+        {...attributes}
+        {...listeners}
+        disabled={!draggable}
+        title={draggable ? 'Drag to reorder' : 'Disable filters/grouping to reorder'}
+      >
+        <GripVertical className="size-3.5" />
+      </button>
+
+      {/* Checkbox (visual) */}
+      <div className="flex items-center justify-center h-full">
+        <div className="size-4 rounded border border-border bg-transparent" />
+      </div>
+
+      {/* Title */}
+      <div className="flex items-center py-2.5 pr-2">
         <Input
           value={task.title}
           onChange={(event) => onTitleChange(task, event.target.value)}
           disabled={!canEdit}
-          className="h-9"
+          className="h-8 border-0 bg-transparent px-0 text-sm font-medium text-foreground shadow-none focus-visible:ring-0 placeholder:text-muted-foreground"
         />
       </div>
 
+      {/* Assignee */}
       <Select
         value={task.assignees[0]?.id ?? 'none'}
         onValueChange={(value) => onAssigneeChange(task, value)}
         disabled={!canEdit}
       >
-        <SelectTrigger className="h-9">
-          <SelectValue placeholder="Assignee" />
+        <SelectTrigger className="h-8 border-0 bg-transparent px-2 text-xs text-muted-foreground shadow-none focus:ring-0 focus-visible:ring-0 hover:bg-muted/40 rounded-md transition-colors">
+          <SelectValue placeholder="—" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="none">Unassigned</SelectItem>
@@ -126,16 +170,23 @@ function SortableTaskRow({
         </SelectContent>
       </Select>
 
-      <Input
-        type="date"
-        value={task.dueDate ?? ''}
-        onChange={(event) => onDueDateChange(task, event.target.value || null)}
-        disabled={!canEdit}
-        className="h-9"
-      />
+      {/* Due date - archive: text + calendar icon */}
+      <div className="flex items-center gap-2">
+        <Input
+          type="date"
+          value={task.dueDate ?? ''}
+          onChange={(event) => onDueDateChange(task, event.target.value || null)}
+          disabled={!canEdit}
+          className="h-8 w-28 border-0 bg-transparent px-2 text-xs text-muted-foreground shadow-none focus-visible:ring-0"
+        />
+        <span className="flex size-6 shrink-0 items-center justify-center text-muted-foreground" aria-hidden>
+          <Calendar className="size-3.5" />
+        </span>
+      </div>
 
+      {/* Priority pill - archive style */}
       <Select value={task.priority} onValueChange={(value) => onPriorityChange(task, value as 'p0' | 'p1' | 'p2')} disabled={!canEdit}>
-        <SelectTrigger className="h-9">
+        <SelectTrigger className="h-7 w-16 gap-1 rounded-md border border-border bg-muted px-2.5 text-xs text-muted-foreground shadow-none focus:ring-0 focus-visible:ring-0">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -145,9 +196,13 @@ function SortableTaskRow({
         </SelectContent>
       </Select>
 
+      {/* Status pill - archive style: Done green, In Progress spinner, default Circle */}
       <Select value={task.statusColumnId} onValueChange={(value) => onStatusChange(task, value)} disabled={!canEdit}>
-        <SelectTrigger className="h-9">
-          <SelectValue />
+        <SelectTrigger className={cn('text-xs font-medium leading-normal shadow-none focus:ring-0 focus-visible:ring-0 [&>span]:flex [&>span]:items-center [&>span]:gap-1.5 [&>span]:[line-clamp:unset]', statusTriggerClass)}>
+          <span className="flex items-center gap-1.5 min-w-0 shrink">
+            {statusIcon}
+            <SelectValue />
+          </span>
         </SelectTrigger>
         <SelectContent>
           {columnOptions.map((column) => (
@@ -158,18 +213,48 @@ function SortableTaskRow({
         </SelectContent>
       </Select>
 
-      <div className="flex items-center justify-center">
+      {/* Actions */}
+      <div className="relative flex items-center justify-center" ref={menuRef}>
         {canEdit ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 text-muted-foreground hover:text-destructive"
-            onClick={() => onDelete(task)}
-            title="Delete task"
-            type="button"
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 text-muted-foreground/40 hover:text-muted-foreground group-hover:text-muted-foreground/70 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((v) => !v);
+              }}
+              title="Actions"
+              type="button"
+            >
+              <MoreVertical className="size-3.5" />
+            </Button>
+            {menuOpen && (
+              <div
+                className="absolute right-0 top-full z-10 mt-1 min-w-[140px] rounded-md border border-border bg-card py-1 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button type="button" className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                  Edit
+                </button>
+                <button type="button" className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted hover:text-destructive transition-colors"
+                  onClick={() => {
+                    onDelete(task);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>
         )}
@@ -391,131 +476,144 @@ export function BacklogView({ tenantSlug, projectId }: BacklogViewProps) {
   }
 
   return (
-    <div className="h-full p-6 space-y-4 overflow-auto">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">Backlog</h2>
-          <p className="text-sm text-muted-foreground">
-            Add tasks quickly with required start/due dates and edit fields inline.
-          </p>
-        </div>
+    <div className="flex flex-1 flex-col gap-6 overflow-auto">
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold text-foreground">Backlog</h2>
+        <p className="text-sm text-muted-foreground">
+          Add tasks quickly with required start/due dates and edit fields inline.
+        </p>
         {!canEdit && <p className="text-sm text-warning">Viewer role: editing is disabled.</p>}
       </div>
 
-      <div className="border border-border rounded-lg bg-card p-3 grid grid-cols-1 md:grid-cols-[minmax(220px,1fr)_160px_160px_auto] gap-2 items-center">
-        <Input
-          value={quickTitle}
-          onChange={(event) => setQuickTitle(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              void handleCreateTask();
-            }
-          }}
-          placeholder="Add task title and press Enter"
-          className="h-10"
-        />
-        <Input
-          type="date"
-          value={quickStartDate}
-          onChange={(event) => setQuickStartDate(event.target.value)}
-          className="h-10"
-          aria-label="Start date"
-        />
-        <Input
-          type="date"
-          value={quickDueDate}
-          onChange={(event) => setQuickDueDate(event.target.value)}
-          className="h-10"
-          aria-label="Due date"
-        />
-        <Button onClick={() => void handleCreateTask()} disabled={!canEdit || !quickTitle.trim() || !quickStartDate || !quickDueDate}>
-          <Plus className="size-4" />
-          Add task
-        </Button>
-      </div>
-      {createError && <p className="text-sm text-error">{createError}</p>}
-
-      <div className="grid grid-cols-5 gap-3 items-center border border-border rounded-lg p-3 bg-card">
-        <div className="col-span-5 md:col-span-1 flex items-center gap-2 text-sm text-muted-foreground">
-          <ListFilter className="size-4" /> Filters
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          <Input
+            value={quickTitle}
+            onChange={(event) => setQuickTitle(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void handleCreateTask();
+              }
+            }}
+            placeholder="Add task title and press Enter"
+            className="flex-1 min-w-0 border-0 bg-transparent text-sm placeholder:text-muted-foreground focus-visible:ring-0"
+          />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <label className="flex items-center gap-1.5 rounded border border-border px-2 py-1.5">
+              <Calendar className="size-4 shrink-0" />
+              <input
+                type="date"
+                value={quickStartDate}
+                onChange={(event) => setQuickStartDate(event.target.value)}
+                className="bg-transparent text-sm focus:outline-none"
+                aria-label="Start date"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 rounded border border-border px-2 py-1.5">
+              <Calendar className="size-4 shrink-0" />
+              <input
+                type="date"
+                value={quickDueDate}
+                onChange={(event) => setQuickDueDate(event.target.value)}
+                className="bg-transparent text-sm focus:outline-none"
+                aria-label="Due date"
+              />
+            </label>
+          </div>
+          <Button
+            onClick={() => void handleCreateTask()}
+            disabled={!canEdit || !quickTitle.trim() || !quickStartDate || !quickDueDate}
+            className="gap-2 shrink-0"
+          >
+            <Plus className="size-4" />
+            Add task
+          </Button>
         </div>
+        {createError && <p className="text-sm text-destructive mt-2">{createError}</p>}
+      </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <ListFilter className="size-4" />
+          <span>Filters</span>
+        </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-9">
+          <SelectTrigger className="h-8 w-auto gap-1.5 border border-border bg-muted/50 px-3 text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All status</SelectItem>
-            {columns.map((column) => (
-              <SelectItem key={column.id} value={column.id}>
-                {column.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-          <SelectTrigger className="h-9">
-            <SelectValue placeholder="Assignee" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All assignees</SelectItem>
-            {members.map((member) => (
-              <SelectItem key={member.userId} value={member.userId}>
-                {member.profile?.displayName ?? member.userId}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={dueFilter} onValueChange={(value) => setDueFilter(value as DueFilter)}>
-          <SelectTrigger className="h-9">
-            <SelectValue placeholder="Due" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any due</SelectItem>
-            <SelectItem value="overdue">Overdue</SelectItem>
-            <SelectItem value="this_week">This week</SelectItem>
-            <SelectItem value="no_due">No due date</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={tagFilter} onValueChange={setTagFilter}>
-          <SelectTrigger className="h-9">
-            <SelectValue placeholder="Tag" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All tags</SelectItem>
-            {activeTags.map((tag) => (
-              <SelectItem key={tag.id} value={tag.id}>
-                {tag.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
-          <SelectTrigger className="h-9">
-            <SelectValue placeholder="Group by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">No grouping</SelectItem>
-            <SelectItem value="assignee">Group by assignee</SelectItem>
-            <SelectItem value="tag">Group by tag</SelectItem>
-            <SelectItem value="due_week">Group by due week</SelectItem>
-          </SelectContent>
-        </Select>
+              <SelectContent>
+                <SelectItem value="all">All status</SelectItem>
+                {columns.map((column) => (
+                  <SelectItem key={column.id} value={column.id}>
+                    {column.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+              <SelectTrigger className="h-8 w-auto gap-1.5 border border-border bg-muted/50 px-3 text-sm">
+                <SelectValue placeholder="Assignee" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All assignees</SelectItem>
+                {members.map((member) => (
+                  <SelectItem key={member.userId} value={member.userId}>
+                    {member.profile?.displayName ?? member.userId}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={dueFilter} onValueChange={(value) => setDueFilter(value as DueFilter)}>
+              <SelectTrigger className="h-8 w-auto gap-1.5 border border-border bg-muted/50 px-3 text-sm">
+                <SelectValue placeholder="Due" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any due</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="this_week">This week</SelectItem>
+                <SelectItem value="no_due">No due date</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={tagFilter} onValueChange={setTagFilter}>
+              <SelectTrigger className="h-8 w-auto gap-1.5 border border-border bg-muted/50 px-3 text-sm">
+                <SelectValue placeholder="Tag" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All tags</SelectItem>
+                {activeTags.map((tag) => (
+                  <SelectItem key={tag.id} value={tag.id}>
+                    {tag.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={groupBy} onValueChange={(value) => setGroupBy(value as GroupBy)}>
+              <SelectTrigger className="h-8 w-auto gap-1.5 border border-border bg-muted/50 px-3 text-sm">
+                <SelectValue placeholder="Group by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No grouping</SelectItem>
+                <SelectItem value="assignee">Group by assignee</SelectItem>
+                <SelectItem value="tag">Group by tag</SelectItem>
+                <SelectItem value="due_week">Group by due week</SelectItem>
+              </SelectContent>
+            </Select>
       </div>
 
-      <div className="border border-border rounded-lg overflow-x-auto">
-        <div className="min-w-[1020px]">
-          <div className="grid grid-cols-[minmax(280px,1.6fr)_160px_170px_130px_170px_56px] gap-3 p-3 bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-            <span>Task</span>
-            <span>Assignee</span>
-            <span>Due date</span>
-            <span>Priority</span>
-            <span>Status</span>
+      <div className="border border-border rounded-lg overflow-x-auto bg-background">
+        <div className="min-w-[900px]">
+          {/* Table header */}
+          <div className="grid grid-cols-[32px_32px_minmax(200px,1.6fr)_150px_150px_120px_140px_44px] items-center border-b border-border bg-muted/60 px-0">
+            <div className="flex items-center justify-center py-2.5">
+              <div className="size-4 rounded border border-border bg-transparent" />
+            </div>
+            <div />
+            <span className="py-2.5 pr-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Header</span>
+            <span className="py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Assignee</span>
+            <span className="py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Due date</span>
+            <span className="py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Priority</span>
+            <span className="py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</span>
             <span />
           </div>
 

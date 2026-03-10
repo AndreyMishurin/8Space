@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   addDays,
   differenceInCalendarDays,
   eachDayOfInterval,
@@ -9,11 +19,12 @@ import {
   isWeekend,
   subDays,
 } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
 import {
   useDeleteTask,
   useMoveTask,
   useProject,
+  useReorderTasks,
   useTaskDependencies,
   useTasks,
   useUpdateTaskInline,
@@ -51,6 +62,216 @@ interface DisplayTask {
 }
 
 const ROW_HEIGHT = 48;
+const TASKS_PANEL_WIDTH = 250;
+const TASKS_PANEL_COLLAPSED_WIDTH = 48;
+
+interface SortableTimelineRowProps {
+  item: DisplayTask;
+  dates: Date[];
+  timelineRange: { start: Date; end: Date };
+  cellWidth: number;
+  dragState: DragState | null;
+  setDragState: (s: DragState | null) => void;
+  canEdit: boolean;
+  deleteTask: (taskId: string) => void;
+  tasksPanelCollapsed: boolean;
+}
+
+function SortableTimelineRow({
+  item,
+  dates,
+  timelineRange,
+  cellWidth,
+  dragState,
+  setDragState,
+  canEdit,
+  deleteTask,
+  tasksPanelCollapsed,
+}: SortableTimelineRowProps) {
+  const { task, displayStart, displayEnd, conflict } = item;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    disabled: !canEdit,
+  });
+
+  const activeDrag = dragState?.taskId === task.id;
+  const renderStart = activeDrag ? dragState.currentStart : displayStart;
+  const renderEnd = activeDrag ? dragState.currentEnd : displayEnd;
+  const renderLeft = differenceInCalendarDays(renderStart, timelineRange.start) * cellWidth;
+  const renderWidth = Math.max(
+    (differenceInCalendarDays(renderEnd, renderStart) + 1) * cellWidth,
+    task.isMilestone ? 8 : cellWidth
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        'flex h-12 border-b border-border/50 shrink-0 bg-card',
+        isDragging && 'opacity-80 z-30'
+      )}
+    >
+      {/* Left cell: drag handle + task info (sticky when scrolling timeline) */}
+      <div
+        className={cn(
+          'border-r border-border/50 flex items-center shrink-0 bg-card sticky left-0 z-10',
+          tasksPanelCollapsed ? 'w-12 justify-center' : 'px-2'
+        )}
+        style={{ width: tasksPanelCollapsed ? TASKS_PANEL_COLLAPSED_WIDTH : TASKS_PANEL_WIDTH }}
+      >
+        {canEdit && (
+          <button
+            type="button"
+            className={cn(
+              'cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none',
+              !tasksPanelCollapsed && 'mr-2'
+            )}
+            {...attributes}
+            {...listeners}
+            title="Drag to reorder"
+          >
+            <GripVertical className="size-4" />
+          </button>
+        )}
+        {!tasksPanelCollapsed && (
+          <>
+            <div className="flex-1 min-w-0 grid grid-cols-[1fr_90px] gap-2 items-center">
+              <span className={cn('text-sm truncate hover:text-orange-500 transition-colors', conflict && 'text-destructive')}>
+                {task.title}
+              </span>
+              <span className="text-xs text-muted-foreground text-right">
+                {task.dueDate ? format(new Date(task.dueDate), 'MMM d') : '—'}
+              </span>
+            </div>
+            {canEdit && (
+              <button
+                type="button"
+                className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Delete «${task.title}»?`)) deleteTask(task.id);
+                }}
+                title="Delete task"
+              >
+                ×
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Right cell: timeline bar row */}
+      <div className="flex-1 min-w-max relative h-12">
+        <div className="absolute inset-0 flex">
+          {dates.map((date) => (
+            <div
+              key={date.toISOString() + task.id}
+              className={cn(
+                'border-r border-border flex-shrink-0',
+                isWeekend(date) && 'bg-muted/30',
+                isToday(date) && 'bg-orange-500/5'
+              )}
+              style={{ width: cellWidth }}
+            />
+          ))}
+        </div>
+
+        {task.isMilestone ? (
+          <button
+            type="button"
+            className="absolute top-1/2 -translate-y-1/2 rotate-45 bg-orange-500 border border-orange-600 z-20 shadow-md gantt-task-bar"
+            style={{ left: renderLeft, width: 12, height: 12 }}
+            disabled={!canEdit}
+            onMouseDown={(e) => {
+              if (!canEdit) return;
+              e.preventDefault();
+              setDragState({
+                taskId: task.id,
+                type: 'move',
+                startX: e.clientX,
+                originalStart: displayStart,
+                originalEnd: displayEnd,
+                currentStart: displayStart,
+                currentEnd: displayEnd,
+              });
+            }}
+            title={task.title}
+          />
+        ) : (
+          <div
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 rounded-md bg-orange-500 border border-orange-600 hover:bg-orange-600 z-20 shadow-md overflow-hidden gantt-task-bar cursor-pointer flex items-center',
+              conflict && 'ring-2 ring-destructive'
+            )}
+            style={{ left: renderLeft, width: renderWidth, height: 24 }}
+            title={task.title}
+          >
+            {renderWidth > 56 && (
+              <span className="absolute inset-0 px-2 flex items-center text-xs font-medium text-white truncate pointer-events-none">
+                {task.title}
+              </span>
+            )}
+            <button
+              type="button"
+              className="absolute inset-0 cursor-grab"
+              disabled={!canEdit}
+              onMouseDown={(e) => {
+                if (!canEdit) return;
+                e.preventDefault();
+                setDragState({
+                  taskId: task.id,
+                  type: 'move',
+                  startX: e.clientX,
+                  originalStart: displayStart,
+                  originalEnd: displayEnd,
+                  currentStart: displayStart,
+                  currentEnd: displayEnd,
+                });
+              }}
+            />
+            <button
+              type="button"
+              className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
+              disabled={!canEdit}
+              onMouseDown={(e) => {
+                if (!canEdit) return;
+                e.preventDefault();
+                setDragState({
+                  taskId: task.id,
+                  type: 'resize-left',
+                  startX: e.clientX,
+                  originalStart: displayStart,
+                  originalEnd: displayEnd,
+                  currentStart: displayStart,
+                  currentEnd: displayEnd,
+                });
+              }}
+            />
+            <button
+              type="button"
+              className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
+              disabled={!canEdit}
+              onMouseDown={(e) => {
+                if (!canEdit) return;
+                e.preventDefault();
+                setDragState({
+                  taskId: task.id,
+                  type: 'resize-right',
+                  startX: e.clientX,
+                  originalStart: displayStart,
+                  originalEnd: displayEnd,
+                  currentStart: displayStart,
+                  currentEnd: displayEnd,
+                });
+              }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function TimelineView({ tenantSlug, projectId }: TimelineViewProps) {
   const project = useProject(projectId, tenantSlug);
@@ -59,9 +280,13 @@ export function TimelineView({ tenantSlug, projectId }: TimelineViewProps) {
 
   const updateTask = useUpdateTaskInline(projectId);
   const moveTask = useMoveTask(projectId);
+  const reorderTasks = useReorderTasks(projectId);
   const deleteTask = useDeleteTask(projectId);
   const [scale, setScale] = useState<Scale>('week');
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [tasksPanelCollapsed, setTasksPanelCollapsed] = useState(false);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const tasks = useMemo(() => sortTasksByRank(tasksQuery.data ?? []), [tasksQuery.data]);
   const dependencies = useMemo(() => dependenciesQuery.data ?? [], [dependenciesQuery.data]);
@@ -245,6 +470,28 @@ export function TimelineView({ tenantSlug, projectId }: TimelineViewProps) {
     };
   }, [canEdit, cellWidth, dragState, moveTask, tasks, updateTask]);
 
+  const handleReorderEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const displayIds = displayTasks.map((d) => d.task.id);
+    const oldIndex = displayIds.indexOf(String(active.id));
+    const newIndex = displayIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newDisplayOrder = arrayMove(displayIds, oldIndex, newIndex);
+    const allIds = tasks.map((t) => t.id);
+    const displaySet = new Set(displayIds);
+    const newOrder: string[] = [];
+    let i = 0;
+    for (const id of allIds) {
+      if (displaySet.has(id)) {
+        newOrder.push(newDisplayOrder[i++]);
+      } else {
+        newOrder.push(id);
+      }
+    }
+    reorderTasks.mutate(newOrder);
+  };
+
   const monthHeaders = useMemo(() => {
     if (dates.length === 0) {
       return [];
@@ -256,14 +503,18 @@ export function TimelineView({ tenantSlug, projectId }: TimelineViewProps) {
 
     for (const day of dates) {
       if (!isSameMonth(day, currentStart)) {
-        chunks.push({ label: format(currentStart, 'MMMM yyyy'), width });
+        const label =
+          width >= 80 ? format(currentStart, 'MMMM yyyy') : format(currentStart, 'MMM yyyy');
+        chunks.push({ label, width });
         currentStart = day;
         width = 0;
       }
       width += cellWidth;
     }
 
-    chunks.push({ label: format(currentStart, 'MMMM yyyy'), width });
+    const lastLabel =
+      width >= 80 ? format(currentStart, 'MMMM yyyy') : format(currentStart, 'MMM yyyy');
+    chunks.push({ label: lastLabel, width });
 
     return chunks;
   }, [cellWidth, dates]);
@@ -331,231 +582,117 @@ export function TimelineView({ tenantSlug, projectId }: TimelineViewProps) {
 
       {/* Gantt area */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-        <div className="gantt-grid flex-1 min-h-0 border border-border rounded-lg overflow-hidden bg-card">
-          {/* Left pane: Task list */}
-          <div className="border-r border-border flex flex-col min-w-0 bg-card">
-            <div className="h-14 border-b border-border flex items-center px-4 bg-muted/30">
-              <div className="w-full grid grid-cols-[1fr_90px] gap-2">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Task</span>
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Due date</span>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {displayTasks.map(({ task, conflict }) => (
+        <div className="flex-1 min-h-0 border border-border rounded-lg overflow-hidden bg-card flex flex-col">
+          {/* Single scroll: header + unified rows */}
+          <div className="flex-1 overflow-auto min-h-0">
+            <div className="relative min-w-max flex flex-col">
+              {/* Header row: left (Task | Due + collapse) + right (month | day) */}
+              <div className="flex border-b border-border shrink-0 bg-muted/30">
                 <div
-                  key={task.id}
-                  className={cn(
-                    'h-12 border-b border-border/50 flex items-center px-4 hover:bg-muted/30 group cursor-pointer transition-colors',
-                    conflict && 'ring-1 ring-error/50'
-                  )}
+                  className="h-14 border-r border-border flex items-center bg-muted/30 sticky left-0 z-20 shrink-0"
+                  style={{ width: tasksPanelCollapsed ? TASKS_PANEL_COLLAPSED_WIDTH : TASKS_PANEL_WIDTH }}
                 >
-                  <div className="w-full grid grid-cols-[1fr_90px] gap-2 items-center">
-                    <span className={cn('text-sm truncate group-hover:text-orange-500 transition-colors', conflict && 'text-destructive')}>
-                      {task.title}
-                    </span>
-                    <span className="text-xs text-muted-foreground text-right">
-                      {task.dueDate ? format(new Date(task.dueDate), 'MMM d') : '—'}
-                    </span>
-                  </div>
-                  {canEdit && (
+                  {tasksPanelCollapsed ? (
                     <button
                       type="button"
-                      className="ml-1 p-1.5 rounded text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Delete «${task.title}»?`)) deleteTask.mutate(task.id);
-                      }}
-                      title="Delete task"
+                      className="w-full h-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                      onClick={() => setTasksPanelCollapsed(false)}
+                      title="Expand task list"
                     >
-                      ×
+                      <ChevronRight className="size-5" />
                     </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right pane: Timeline */}
-          <div className="overflow-auto relative min-w-0">
-          <div className="min-w-max">
-            <div className="h-7 flex border-b border-border bg-muted/40 sticky top-0 z-20">
-              {monthHeaders.map((header) => (
-                <div
-                  key={header.label + header.width}
-                  className="border-r border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-4 flex items-center"
-                  style={{ width: header.width }}
-                >
-                  {header.label}
-                </div>
-              ))}
-            </div>
-
-            <div className="h-7 flex border-b border-border bg-muted/20 sticky top-7 z-20">
-              {dates.map((date) => (
-                <div
-                  key={date.toISOString()}
-                  className={cn(
-                    'border-r border-border text-[10px] text-center flex items-center justify-center',
-                    isWeekend(date) && 'bg-muted/60 text-muted-foreground',
-                    isToday(date) && 'bg-orange-500/10'
-                  )}
-                  style={{ width: cellWidth }}
-                >
-                  {format(date, 'EEE d')}
-                </div>
-              ))}
-            </div>
-
-            <div className="relative">
-              <svg
-                className="absolute inset-0 pointer-events-none z-10"
-                width={dates.length * cellWidth}
-                height={displayTasks.length * ROW_HEIGHT}
-              >
-                {dependencyPaths.map((dependency) => (
-                  <path
-                    key={dependency.id}
-                    d={dependency.path}
-                    fill="none"
-                    stroke={dependency.conflict ? 'hsl(var(--error))' : 'hsl(var(--muted-foreground))'}
-                    strokeWidth={1.5}
-                    markerEnd="url(#arrow-head)"
-                  />
-                ))}
-                <defs>
-                  <marker id="arrow-head" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
-                    <path d="M0,0 L0,6 L6,3 z" fill="hsl(var(--muted-foreground))" />
-                  </marker>
-                </defs>
-              </svg>
-
-              {displayTasks.map(({ task, displayStart, displayEnd, conflict }, index) => {
-                const rowTop = index * ROW_HEIGHT;
-
-                const activeDrag = dragState?.taskId === task.id;
-                const renderStart = activeDrag ? dragState.currentStart : displayStart;
-                const renderEnd = activeDrag ? dragState.currentEnd : displayEnd;
-                const renderLeft = differenceInCalendarDays(renderStart, timelineRange.start) * cellWidth;
-                const renderWidth = Math.max(
-                  (differenceInCalendarDays(renderEnd, renderStart) + 1) * cellWidth,
-                  task.isMilestone ? 8 : cellWidth
-                );
-
-                return (
-                  <div key={task.id} className="h-12 border-b border-border/50 relative" style={{ top: rowTop }}>
-                    <div className="absolute inset-0 flex">
-                      {dates.map((date) => (
-                        <div
-                          key={date.toISOString() + task.id}
-                          className={cn(
-                            'border-r border-border flex-shrink-0',
-                            isWeekend(date) && 'bg-muted/30',
-                            isToday(date) && 'bg-orange-500/5'
-                          )}
-                          style={{ width: cellWidth }}
-                        />
-                      ))}
-                    </div>
-
-                    {task.isMilestone ? (
+                  ) : (
+                    <>
+                      <div className="flex-1 grid grid-cols-[1fr_90px] gap-2 items-center px-4">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Task</span>
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">Due date</span>
+                      </div>
                       <button
                         type="button"
-                        className="absolute top-1/2 -translate-y-1/2 rotate-45 bg-orange-500 border border-orange-600 z-20 shadow-md gantt-task-bar"
-                        style={{
-                          left: renderLeft,
-                          width: 12,
-                          height: 12,
-                        }}
-                        disabled={!canEdit}
-                        onMouseDown={(event) => {
-                          if (!canEdit) return;
-                          event.preventDefault();
-                          setDragState({
-                            taskId: task.id,
-                            type: 'move',
-                            startX: event.clientX,
-                            originalStart: displayStart,
-                            originalEnd: displayEnd,
-                            currentStart: displayStart,
-                            currentEnd: displayEnd,
-                          });
-                        }}
-                        title={task.title}
-                      />
-                    ) : (
-                      <div
-                        className={cn(
-                          'absolute top-1/2 -translate-y-1/2 rounded-md bg-orange-500 border border-orange-600 hover:bg-orange-600 z-20 shadow-md overflow-hidden gantt-task-bar cursor-pointer',
-                          conflict && 'ring-2 ring-destructive'
-                        )}
-                        style={{
-                          left: renderLeft,
-                          width: renderWidth,
-                          height: 24,
-                        }}
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
+                        onClick={() => setTasksPanelCollapsed(true)}
+                        title="Collapse task list"
                       >
-                        <button
-                          type="button"
-                          className="absolute inset-0 cursor-grab"
-                          disabled={!canEdit}
-                          onMouseDown={(event) => {
-                            if (!canEdit) return;
-                            event.preventDefault();
-                            setDragState({
-                              taskId: task.id,
-                              type: 'move',
-                              startX: event.clientX,
-                              originalStart: displayStart,
-                              originalEnd: displayEnd,
-                              currentStart: displayStart,
-                              currentEnd: displayEnd,
-                            });
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
-                          disabled={!canEdit}
-                          onMouseDown={(event) => {
-                            if (!canEdit) return;
-                            event.preventDefault();
-                            setDragState({
-                              taskId: task.id,
-                              type: 'resize-left',
-                              startX: event.clientX,
-                              originalStart: displayStart,
-                              originalEnd: displayEnd,
-                              currentStart: displayStart,
-                              currentEnd: displayEnd,
-                            });
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
-                          disabled={!canEdit}
-                          onMouseDown={(event) => {
-                            if (!canEdit) return;
-                            event.preventDefault();
-                            setDragState({
-                              taskId: task.id,
-                              type: 'resize-right',
-                              startX: event.clientX,
-                              originalStart: displayStart,
-                              originalEnd: displayEnd,
-                              currentStart: displayStart,
-                              currentEnd: displayEnd,
-                            });
-                          }}
-                        />
+                        <ChevronLeft className="size-5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div className="min-w-max flex flex-col shrink-0">
+                  <div className="h-7 flex border-b border-border bg-muted/40">
+                    {monthHeaders.map((header) => (
+                      <div
+                        key={header.label + header.width}
+                        className="border-r border-border text-xs font-semibold text-muted-foreground uppercase tracking-wider pl-2 pr-2 flex items-center min-w-0 overflow-hidden"
+                        style={{ width: header.width }}
+                      >
+                        <span className="truncate">{header.label}</span>
                       </div>
-                    )}
+                    ))}
                   </div>
-                );
-              })}
+                  <div className="h-7 flex border-b border-border bg-muted/20">
+                    {dates.map((date) => (
+                      <div
+                        key={date.toISOString()}
+                        className={cn(
+                          'border-r border-border text-[10px] text-center flex items-center justify-center',
+                          isWeekend(date) && 'bg-muted/60 text-muted-foreground',
+                          isToday(date) && 'bg-orange-500/10'
+                        )}
+                        style={{ width: cellWidth }}
+                      >
+                        {format(date, 'EEE d')}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleReorderEnd}>
+                <SortableContext items={displayTasks.map((d) => d.task.id)} strategy={verticalListSortingStrategy}>
+                  <div className="relative flex flex-col">
+                  <svg
+                    className="absolute pointer-events-none z-10"
+                    style={{ left: tasksPanelCollapsed ? TASKS_PANEL_COLLAPSED_WIDTH : TASKS_PANEL_WIDTH, top: 0 }}
+                    width={dates.length * cellWidth}
+                    height={displayTasks.length * ROW_HEIGHT}
+                  >
+                    {dependencyPaths.map((dependency) => (
+                      <path
+                        key={dependency.id}
+                        d={dependency.path}
+                        fill="none"
+                        stroke={dependency.conflict ? 'hsl(var(--error))' : 'hsl(var(--muted-foreground))'}
+                        strokeWidth={1.5}
+                        markerEnd="url(#arrow-head)"
+                      />
+                    ))}
+                    <defs>
+                      <marker id="arrow-head" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
+                        <path d="M0,0 L0,6 L6,3 z" fill="hsl(var(--muted-foreground))" />
+                      </marker>
+                    </defs>
+                  </svg>
+
+                  {displayTasks.map((item) => (
+                    <SortableTimelineRow
+                      key={item.task.id}
+                      item={item}
+                      dates={dates}
+                      timelineRange={timelineRange}
+                      cellWidth={cellWidth}
+                      dragState={dragState}
+                      setDragState={setDragState}
+                      canEdit={canEdit}
+                      deleteTask={deleteTask.mutate}
+                      tasksPanelCollapsed={tasksPanelCollapsed}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
             </div>
           </div>
-        </div>
         </div>
       </div>
 
