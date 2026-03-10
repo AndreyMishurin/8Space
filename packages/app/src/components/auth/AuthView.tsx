@@ -56,6 +56,9 @@ function normalizeAuthError(error: unknown, mode: AuthMode): FieldErrors {
   return { form: rawMessage };
 }
 
+/** Toggle to enable/disable email/password auth UI. */
+const EMAIL_AUTH_ENABLED = false;
+
 export function AuthView() {
   const { signInWithPassword, signUpWithPassword, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -161,123 +164,129 @@ export function AuthView() {
           {googleLoading ? 'Redirecting…' : 'Continue with Google'}
         </Button>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">or</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={mode === 'signin' ? 'default' : 'outline'}
-            onClick={() => {
-              setMode('signin');
-              setErrors({});
-            }}
-            type="button"
-          >
-            <LogIn className="size-4" />
-            Sign in
-          </Button>
-          <Button
-            variant={mode === 'signup' ? 'default' : 'outline'}
-            onClick={() => {
-              setMode('signup');
-              setErrors({});
-            }}
-            type="button"
-          >
-            <UserPlus className="size-4" />
-            Sign up
-          </Button>
-        </div>
-
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          {isSignUp && (
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setErrors((current) => {
-                    const { name: _name, form: _form, ...rest } = current;
-                    return rest;
-                  });
-                }}
-                placeholder="Your display name"
-                className={errors.name ? 'border-destructive focus-visible:ring-destructive' : undefined}
-                aria-invalid={Boolean(errors.name)}
-                aria-describedby={errors.name ? 'name-error' : undefined}
-              />
-              {errors.name && (
-                <p id="name-error" className="text-sm text-error">
-                  {errors.name}
-                </p>
-              )}
+        {EMAIL_AUTH_ENABLED && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">or</span>
+              </div>
             </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setErrors((current) => {
-                  const { email: _email, form: _form, ...rest } = current;
-                  return rest;
-                });
-              }}
-              placeholder="you@example.com"
-              required
-              className={errors.email ? 'border-destructive focus-visible:ring-destructive' : undefined}
-              aria-invalid={Boolean(errors.email)}
-              aria-describedby={errors.email ? 'email-error' : undefined}
-            />
-            {errors.email && (
-              <p id="email-error" className="text-sm text-error">
-                {errors.email}
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setErrors((current) => {
-                  const { password: _password, form: _form, ...rest } = current;
-                  return rest;
-                });
-              }}
-              placeholder="••••••••"
-              required
-              className={errors.password ? 'border-destructive focus-visible:ring-destructive' : undefined}
-              aria-invalid={Boolean(errors.password)}
-              aria-describedby={errors.password ? 'password-error' : undefined}
-            />
-            {errors.password && (
-              <p id="password-error" className="text-sm text-error">
-                {errors.password}
-              </p>
-            )}
-          </div>
 
-          {errors.form && <p className="text-sm text-error">{errors.form}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={mode === 'signin' ? 'default' : 'outline'}
+                onClick={() => {
+                  setMode('signin');
+                  setErrors({});
+                }}
+                type="button"
+              >
+                <LogIn className="size-4" />
+                Sign in
+              </Button>
+              <Button
+                variant={mode === 'signup' ? 'default' : 'outline'}
+                onClick={() => {
+                  setMode('signup');
+                  setErrors({});
+                }}
+                type="button"
+              >
+                <UserPlus className="size-4" />
+                Sign up
+              </Button>
+            </div>
 
-          <Button className="w-full" type="submit" disabled={loading}>
-            {loading ? 'Please wait…' : isSignUp ? 'Create account' : 'Sign in'}
-          </Button>
-        </form>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      setErrors((current) => {
+                        const { name: _name, form: _form, ...rest } = current;
+                        return rest;
+                      });
+                    }}
+                    placeholder="Your display name"
+                    className={errors.name ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? 'name-error' : undefined}
+                  />
+                  {errors.name && (
+                    <p id="name-error" className="text-sm text-error">
+                      {errors.name}
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setErrors((current) => {
+                      const { email: _email, form: _form, ...rest } = current;
+                      return rest;
+                    });
+                  }}
+                  placeholder="you@example.com"
+                  required
+                  className={errors.email ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
+                />
+                {errors.email && (
+                  <p id="email-error" className="text-sm text-error">
+                    {errors.email}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setErrors((current) => {
+                      const { password: _password, form: _form, ...rest } = current;
+                      return rest;
+                    });
+                  }}
+                  placeholder="••••••••"
+                  required
+                  className={errors.password ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                  aria-invalid={Boolean(errors.password)}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                />
+                {errors.password && (
+                  <p id="password-error" className="text-sm text-error">
+                    {errors.password}
+                  </p>
+                )}
+              </div>
+
+              {errors.form && <p className="text-sm text-error">{errors.form}</p>}
+
+              <Button className="w-full" type="submit" disabled={loading}>
+                {loading ? 'Please wait…' : isSignUp ? 'Create account' : 'Sign in'}
+              </Button>
+            </form>
+          </>
+        )}
+
+        {!EMAIL_AUTH_ENABLED && errors.form && <p className="text-sm text-error">{errors.form}</p>}
 
       </div>
     </div>

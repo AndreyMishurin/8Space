@@ -1,19 +1,13 @@
 import { useMemo, useState } from 'react';
-import {
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  format,
-  parseISO,
-  isBefore,
-  isAfter,
-} from 'date-fns';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import { AlertTriangle, CalendarCheck2, CheckCheck, Gauge, TrendingDown, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useDashboardMetrics } from '@/hooks/use-dashboard-metrics';
+import { useTasks, useWorkflowColumns } from '@/hooks/use-project-data';
 import { ErrorScreen } from '@/components/ErrorScreen';
 import { getErrorMessage } from '@/lib/errors';
+import { computeBurndownFromTasks } from '@/lib/burndown';
 import { BurndownChart, type BurndownPoint } from '@/components/charts/BurndownChart';
 
 interface DashboardViewProps {
@@ -41,44 +35,11 @@ function MetricCard({ title, value, icon: Icon, hint }: MetricCardProps) {
   );
 }
 
-const MONTH_DAYS = 31;
-
-function buildBurndownData(
-  completionTrend: { date: string; doneCount: number }[],
-  totalScope: number,
-  monthStart: Date,
-  monthEnd: Date
-): BurndownPoint[] {
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const trendByDate = new Map<string, number>();
-  for (const p of completionTrend) {
-    trendByDate.set(p.date, p.doneCount);
-  }
-
-  const numDays = days.length;
-  let cumulativeDone = 0;
-
-  return days.map((day, index) => {
-    const dateStr = format(day, 'yyyy-MM-dd');
-    const doneThisDay = trendByDate.get(dateStr) ?? 0;
-    cumulativeDone += doneThisDay;
-    const actual = Math.max(0, totalScope - cumulativeDone);
-    const planned =
-      numDays <= 1 ? totalScope : totalScope * (1 - index / (numDays - 1));
-
-    return {
-      date: dateStr,
-      dayLabel: format(day, 'MM-dd'),
-      planned: Math.round(planned * 10) / 10,
-      actual,
-    };
-  });
-}
-
 export function DashboardView({ tenantSlug: _tenantSlug, projectId }: DashboardViewProps) {
   const [daysWindow, setDaysWindow] = useState<7 | 14>(14);
   const metricsQuery = useDashboardMetrics(projectId, daysWindow);
-  const monthMetricsQuery = useDashboardMetrics(projectId, MONTH_DAYS);
+  const tasksQuery = useTasks(projectId);
+  const columnsQuery = useWorkflowColumns(projectId);
 
   const metrics = metricsQuery.data;
 
@@ -94,30 +55,17 @@ export function DashboardView({ tenantSlug: _tenantSlug, projectId }: DashboardV
   }, [metrics]);
 
   const burndownData = useMemo((): BurndownPoint[] => {
-    const monthMetrics = monthMetricsQuery.data;
-    if (!monthMetrics) return [];
+    const taskList = tasksQuery.data ?? [];
+    const columns = columnsQuery.data ?? [];
+    const doneColumnIds = new Set(columns.filter((c) => c.kind === 'done').map((c) => c.id));
+    if (columns.length === 0) return [];
 
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
-    const totalScope =
-      (monthMetrics.tasksByStatus.backlog ?? 0) +
-      (monthMetrics.tasksByStatus.todo ?? 0) +
-      (monthMetrics.tasksByStatus.in_progress ?? 0) +
-      (monthMetrics.tasksByStatus.done ?? 0);
-
-    const trendInMonth = (monthMetrics.completionTrend ?? []).filter((p) => {
-      try {
-        const d = parseISO(p.date);
-        return !isBefore(d, monthStart) && !isAfter(d, monthEnd);
-      } catch {
-        return false;
-      }
-    });
-
-    return buildBurndownData(trendInMonth, totalScope, monthStart, monthEnd);
-  }, [monthMetricsQuery.data]);
+    return computeBurndownFromTasks(taskList, doneColumnIds, monthStart, monthEnd);
+  }, [tasksQuery.data, columnsQuery.data]);
 
   if (metricsQuery.isLoading) {
     return (

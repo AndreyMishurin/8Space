@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src/hooks/session-utils.ts", "tests/**/*.ts"]
+  "include": ["src/hooks/session-utils.ts", "src/lib/burndown.ts", "tests/**/*.ts"]
 }

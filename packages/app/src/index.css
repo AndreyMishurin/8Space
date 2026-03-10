@@ -28,10 +28,10 @@
     --ring: 240 10% 3.9%;
     --radius: 0.5rem;
 
-    /* Accent colors - #BFFF00 (lime-green) */
-    --accent-lime: 75 100% 50%; /* #BFFF00 - основной цвет */
-    --accent-lime-dark: 75 100% 25%; /* Еще темнее для in_progress */
-    --accent-lime-dim: 75 100% 25%; /* #7FBF00 */
+    /* Accent colors - orange (brand #fa7313) */
+    --accent-lime: 24 96% 53%; /* #fa7313 - основной цвет иконок/акцентов */
+    --accent-lime-dark: 24 96% 35%;
+    --accent-lime-dim: 24 96% 35%;
     --accent-lime-foreground: 0 0% 10%; /* #1a1a1a */
     
     /* Today marker color */
@@ -74,10 +74,10 @@
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
 
-    /* Accent colors remain the same in dark mode */
-    --accent-lime: 75 100% 50%;
-    --accent-lime-dark: 75 100% 25%; /* Еще темнее для in_progress */
-    --accent-lime-dim: 75 100% 25%;
+    /* Accent colors - orange in dark mode */
+    --accent-lime: 24 96% 53%;
+    --accent-lime-dark: 24 96% 35%;
+    --accent-lime-dim: 24 96% 35%;
     --accent-lime-foreground: 0 0% 10%;
     
     /* Today marker color */
