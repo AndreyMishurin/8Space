@@ -9,7 +9,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, Check, Circle, GripVertical, ListFilter, Loader2, MoreVertical, Plus, Trash2 } from 'lucide-react';
+import { Check, Circle, GripVertical, ListFilter, Loader2, MoreVertical, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -170,19 +170,14 @@ function SortableTaskRow({
         </SelectContent>
       </Select>
 
-      {/* Due date - archive: text + calendar icon */}
-      <div className="flex items-center gap-2">
-        <Input
-          type="date"
-          value={task.dueDate ?? ''}
-          onChange={(event) => onDueDateChange(task, event.target.value || null)}
-          disabled={!canEdit}
-          className="h-8 w-28 border-0 bg-transparent px-2 text-xs text-muted-foreground shadow-none focus-visible:ring-0"
-        />
-        <span className="flex size-6 shrink-0 items-center justify-center text-muted-foreground" aria-hidden>
-          <Calendar className="size-3.5" />
-        </span>
-      </div>
+      {/* Due date - native input already shows calendar affordance */}
+      <Input
+        type="date"
+        value={task.dueDate ?? ''}
+        onChange={(event) => onDueDateChange(task, event.target.value || null)}
+        disabled={!canEdit}
+        className="h-8 w-28 border-0 bg-transparent px-2 text-xs text-muted-foreground shadow-none focus-visible:ring-0"
+      />
 
       {/* Priority pill - archive style */}
       <Select value={task.priority} onValueChange={(value) => onPriorityChange(task, value as 'p0' | 'p1' | 'p2')} disabled={!canEdit}>
@@ -501,7 +496,6 @@ export function BacklogView({ tenantSlug, projectId }: BacklogViewProps) {
           />
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <label className="flex items-center gap-1.5 rounded border border-border px-2 py-1.5">
-              <Calendar className="size-4 shrink-0" />
               <input
                 type="date"
                 value={quickStartDate}
@@ -511,7 +505,6 @@ export function BacklogView({ tenantSlug, projectId }: BacklogViewProps) {
               />
             </label>
             <label className="flex items-center gap-1.5 rounded border border-border px-2 py-1.5">
-              <Calendar className="size-4 shrink-0" />
               <input
                 type="date"
                 value={quickDueDate}
