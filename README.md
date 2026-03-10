@@ -118,3 +118,7 @@ npm run build:app
 
 If you find a vulnerability, please report it privately.
 See `/Users/andreymisurin/Documents/NeuroChat/8Space/SECURITY.md` for the disclosure process.
+
+## License
+
+MIT — see `LICENSE`.

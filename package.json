@@ -1,5 +1,6 @@
 {
   "name": "8space-monorepo",
+  "license": "MIT",
   "private": true,
   "workspaces": [
     "packages/*"
